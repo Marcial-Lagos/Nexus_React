@@ -1,0 +1,5 @@
+/* Bootstrap se importa en main.jsx. El CSS original se carga una sola vez. */
+@import "./styles/styles.css";
+@import "./styles/contacto.css";
+@import "./styles/producto.css";
+

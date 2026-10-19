@@ -1,0 +1,50 @@
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
+import { expect, it } from 'vitest';
+import Comunidad from './Comunidad.jsx';
+const usuario = { nombre: 'Ana' };
+it('envía texto seguro, ignora mensajes vacíos y conserva mensajes por canal', async () => {
+  const user = userEvent.setup();
+  render(<MemoryRouter><Comunidad usuario={usuario} /></MemoryRouter>);
+  const input = screen.getByRole('textbox', { name: 'Mensaje para la comunidad' });
+  await user.click(screen.getByRole('button', { name: 'Enviar mensaje a la comunidad' }));
+  expect(within(screen.getByRole('region', { name: 'Mensajes del canal' })).getAllByRole('article')).toHaveLength(3);
+  await user.type(input, '<img src=x onerror=alert(1)>');
+  await user.keyboard('{Enter}');
+  expect(screen.getByText('<img src=x onerror=alert(1)>')).toBeInTheDocument();
+  expect(input).toHaveValue('');
+  await user.click(screen.getByRole('button', { name: '# juegos' }));
+  expect(screen.queryByText('<img src=x onerror=alert(1)>')).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Añadir emoji' }));
+  await user.click(screen.getByRole('button', { name: 'Enviar mensaje a la comunidad' }));
+  expect(screen.getByText('😊')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: '# general' }));
+  expect(screen.getByText('<img src=x onerror=alert(1)>')).toBeInTheDocument();
+});
+it('permite buscar, abrir menú, cambiar canales y mostrar límites de voz y adjuntos', async () => {
+  const user = userEvent.setup();
+  render(<MemoryRouter><Comunidad usuario={usuario} /></MemoryRouter>);
+  await user.click(screen.getByRole('button', { name: 'Abrir canales' }));
+  expect(screen.getByRole('button', { name: 'Abrir canales' })).toHaveAttribute('aria-expanded', 'true');
+  await user.click(screen.getByRole('button', { name: 'Buscar mensajes' }));
+  await user.type(screen.getByRole('searchbox'), 'no-hay');
+  expect(screen.getByText('No hay mensajes con esa búsqueda.')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Adjuntar archivo' }));
+  expect(screen.getByText(/Los archivos adjuntos requieren/)).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Llamada de voz' }));
+  expect(screen.getByText(/Llamada de demostración/)).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: '🔊 Sala general' }));
+  expect(screen.getByText(/Sala de voz de demostración/)).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: '# reglas' }));
+  expect(screen.getByText(/Respeta a las personas/)).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: '# anuncios' }));
+  expect(screen.getByText(/Las novedades/)).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Mostrar u ocultar miembros' }));
+  expect(screen.queryByText('DESCONECTADOS — 2')).not.toBeInTheDocument();
+});
+it('recupera general si el canal solicitado no existe', () => {
+  render(<MemoryRouter initialEntries={['/comunidad?canal=mal']}><Comunidad usuario={usuario} /></MemoryRouter>);
+  expect(screen.getByRole('heading', { name: /bienvenida a #general/ })).toBeInTheDocument();
+});
+
