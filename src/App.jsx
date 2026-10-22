@@ -31,7 +31,7 @@ export default function App() {
   const [busqueda, setBusqueda] = useState('');
   const ubicacion = useLocation();
   useEffect(() => { guardarSesion(usuario); }, [usuario]);
-  function iniciarSesion(datos) { setUsuario({ nombre: datos.nombre, correo: datos.correo, invitado: false, rol: 'cliente', biografia: biografiaOriginal }); }
+  function iniciarSesion(datos) { setUsuario({ nombre: datos.nombre, correo: datos.correo, invitado: false, rol: esAdmin(datos) ? 'admin' : 'cliente', biografia: biografiaOriginal }); }
   function invitado() { setUsuario({ nombre: 'Invitado', correo: '', invitado: true, rol: 'cliente', biografia: biografiaOriginal }); }
   function salir() { setUsuario(null); setCarrito([]); setMenu(false); setBusqueda(''); }
   function agregar(producto, cantidad) {
@@ -63,8 +63,8 @@ export default function App() {
       </>}
       {simple && <Navbar simple stream={ubicacion.pathname === '/stream'} onSearch={setBusqueda} usuario={usuario} onLogout={salir} />}
       <Routes>
-        <Route path="/" element={usuario ? <Navigate to="/principal" replace /> : <Login onLogin={iniciarSesion} onGuest={invitado} />} />
-        <Route path="/login" element={usuario ? <Navigate to="/principal" replace /> : <Login onLogin={iniciarSesion} onGuest={invitado} />} />
+        <Route path="/" element={usuario ? <Navigate to={esAdmin(usuario) ? "/admin" : "/principal"} replace /> : <Login onLogin={iniciarSesion} onGuest={invitado} />} />
+        <Route path="/login" element={usuario ? <Navigate to={esAdmin(usuario) ? "/admin" : "/principal"} replace /> : <Login onLogin={iniciarSesion} onGuest={invitado} />} />
         <Route path="/principal" element={proteger(<Principal busqueda={busqueda} onClearSearch={() => setBusqueda('')} />)} />
         <Route path="/comunidad" element={proteger(<Comunidad usuario={usuario} cantidadCarrito={cantidadCarrito} />)} />
         <Route path="/contacto" element={<Contacto />} />
@@ -72,7 +72,7 @@ export default function App() {
         <Route path="/tienda" element={proteger(<Tienda productos={administracion.productos} carrito={carrito} onRemove={(id) => setCarrito((actual) => actual.filter((item) => item.id !== id))} onEmpty={() => setCarrito([])} />)} />
         <Route path="/producto" element={proteger(<Producto productos={administracion.productos} key={ubicacion.search} onAdd={agregar} />)} />
         <Route path="/stream" element={proteger(<Stream usuario={usuario} />)} />
-        <Route path="*" element={<Navigate to={usuario ? '/principal' : '/login'} replace />} />
+        <Route path="*" element={<Navigate to={usuario ? esAdmin(usuario) ? '/admin' : '/principal' : '/login'} replace />} />
       </Routes>
     </div>
   );

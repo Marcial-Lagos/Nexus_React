@@ -82,3 +82,26 @@ it('conserva catálogo y rol al recargar la aplicación', async () => {
   expect(screen.getByRole('heading', { name: 'Panel de administración' })).toBeInTheDocument();
   expect(screen.getByRole('row', { name: /Teclado Gamer/ })).toHaveTextContent('1000');
 });
+it('entra al panel desde el mismo login normal y conserva el rol al recargar', async () => {
+  const user = userEvent.setup(); const vista = abrir('/login');
+  const form = within(screen.getByRole('form', { name: 'Inicio de sesión' }));
+  await user.type(form.getByLabelText('Correo electrónico'), 'ADMIN@NEXUS.CL');
+  await user.type(form.getByLabelText('Contraseña'), ADMIN_CLAVE);
+  await user.click(form.getByRole('button', { name: 'Entrar a Nexus' }));
+  expect(screen.getByRole('heading', { name: 'Panel de administración' })).toBeInTheDocument();
+  expect(JSON.parse(sessionStorage.getItem('nexus.sesion')).rol).toBe('admin');
+  expect(sessionStorage.getItem('nexus.sesion')).not.toContain(ADMIN_CLAVE);
+  vista.unmount(); abrir('/login');
+  expect(screen.getByRole('heading', { name: 'Panel de administración' })).toBeInTheDocument();
+});
+it('una clave admin incorrecta en el login normal no crea sesión de cliente', async () => {
+  const user = userEvent.setup(); abrir('/login');
+  const form = within(screen.getByRole('form', { name: 'Inicio de sesión' }));
+  await user.type(form.getByLabelText('Correo electrónico'), ADMIN_CORREO);
+  await user.type(form.getByLabelText('Contraseña'), 'incorrecta');
+  await user.click(form.getByRole('button', { name: 'Entrar a Nexus' }));
+  expect(form.getByRole('alert')).toHaveTextContent(/Credenciales de administrador incorrectas/);
+  expect(sessionStorage.getItem('nexus.sesion')).toBeNull();
+  await user.clear(form.getByLabelText('Correo electrónico'));
+  expect(form.queryByRole('alert')).not.toBeInTheDocument();
+});

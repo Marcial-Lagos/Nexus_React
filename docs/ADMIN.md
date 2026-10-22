@@ -2,7 +2,7 @@
 
 ## Acceso
 
-En el acceso normal, seleccionar **Acceso administrador**, o abrir `/admin/login`.
+Usar el mismo formulario de inicio de sesión que los clientes. Las credenciales siguientes abren automáticamente `/admin`; los demás usuarios van a `/principal`. `/admin/login` se conserva como acceso directo compatible. Un intento fallido con el correo reservado del administrador muestra un error y no crea una sesión de cliente.
 
 - Correo: `admin@nexus.cl`
 - Contraseña pública de demostración: `NexusAdmin123!`
