@@ -15,8 +15,8 @@ La ruta `/admin/*` comprueba el rol y redirige al acceso administrativo a invita
 - Productos: crear, consultar/buscar, editar precio, stock, categoría y descripción, eliminar con confirmación. Los cambios se reflejan en Tienda y Producto.
 - Categorías: CRUD y restricción de eliminación cuando tienen productos asociados.
 - Usuarios: directorio CRUD de clientes de demostración, sin credenciales ni posibilidad de asignar el rol admin.
-- Reportes: valor del inventario y número de productos con stock crítico.
-- Órdenes: estado vacío explícito. No existen checkout, emisión de boletas, ventas ni historial de compras real.
+- Reportes: inventario, stock crítico y cantidades/totales de pedidos activos simulados.
+- Órdenes: consulta de pedidos simulados, detalle y entrega, estados pendiente/preparando/enviado/cancelado. Cancelar antes del envío restituye stock; no se emiten boletas tributarias. Ver COMPRAS.md.
 - Perfil: consulta del administrador. Cierre de sesión y navegación a la tienda.
 
 Datos en `src/data/administracion.js`, guardados bajo `nexus.administracion.v1` en localStorage. Si no se puede guardar, la interfaz avisa que los cambios duran solo en memoria. Los datos se conservan al cerrar la sesión en el mismo navegador. No son compartidos entre dispositivos.
@@ -35,6 +35,6 @@ Las pruebas verifican autenticación demo correcta e incorrecta, restricción de
 
 El anexo pide fuente de datos JS con CRUD, persistencia integrada con componentes, vistas administrativas y diseño responsivo Bootstrap. Se implementan en este módulo mediante props, estado compartido y formularios/tablas Bootstrap.
 
-La rúbrica y el anexo mencionan explícitamente **Jasmine y Karma**. Este proyecto utiliza **Vitest y React Testing Library**, conforme al flujo previo de trabajo. No se ha reemplazado la herramienta ni se considera acreditado ese indicador: confirmar con el docente si acepta Vitest; si exige Jasmine/Karma se debe adaptar el entorno.
+La herramienta elegida para este proyecto es **Vitest con React Testing Library y coverage V8**. Se utiliza para todas las pruebas, sin agregar Jasmine/Karma.
 
-Esta entrega no completa por sí sola toda la evaluación. Quedan por revisar las vistas públicas de categorías/ofertas, checkout, resultado de compra, ERS V2, informe de pruebas y presentación. Las categorías populares de streams retiradas anteriormente no equivalían a las categorías de productos solicitadas en el anexo.
+Esta entrega no completa por sí sola toda la evaluación. Checkout, resultado de compra y gestión de órdenes están implementados en modo simulado. Quedan por revisar las vistas públicas de categorías/ofertas, ERS V2, informe de pruebas y presentación. Las categorías populares de streams retiradas anteriormente no equivalían a las categorías de productos solicitadas en el anexo.

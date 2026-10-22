@@ -11,6 +11,8 @@ export default function Producto({ onAdd, productos = catalogoInicial }) {
   const [cantidad, setCantidad] = useState(1);
   const [vista, setVista] = useState(0);
   const [mensaje, setMensaje] = useState('');
+  const [error, setError] = useState('');
+  const limite = Math.min(99, producto?.stock ?? 99);
   if (!producto) return <main className="pagina-producto"><h1>Producto no encontrado</h1><p>El producto solicitado no está en el catálogo de Nexus.</p><Link className="boton boton-primario" to="/tienda">Volver a la tienda</Link></main>;
   return (
     <main className="pagina-producto">
@@ -28,11 +30,12 @@ export default function Producto({ onAdd, productos = catalogoInicial }) {
           <p className="descripcion-producto">{producto.descripcion || 'Artículo del catálogo de demostración original de Nexus. La fotografía y la ficha técnica no fueron incluidas en el proyecto original.'}</p>
           {producto.caracteristicas && <ul className="caracteristicas-producto">{producto.caracteristicas.map((texto) => <li key={texto}>✓ {texto}</li>)}</ul>}
           <div className="acciones-producto">
-            <div className="selector-cantidad"><button onClick={() => setCantidad((n) => Math.max(1, n - 1))} aria-label="Disminuir cantidad" disabled={cantidad === 1}>−</button><span role="status" aria-label="Cantidad">{cantidad}</span><button onClick={() => setCantidad((n) => Math.min(99, n + 1))} aria-label="Aumentar cantidad" disabled={cantidad === 99}>+</button></div>
-            <button className="boton boton-primario boton-agregar-producto" disabled={producto.stock === 0} onClick={() => { onAdd(producto, cantidad); setMensaje(`¡${cantidad} × ${producto.nombre} agregado al carrito de demostración!`); }}>🛒 Agregar al carrito</button>
+            <div className="selector-cantidad"><button onClick={() => setCantidad((n) => Math.max(1, n - 1))} aria-label="Disminuir cantidad" disabled={cantidad === 1}>−</button><span role="status" aria-label="Cantidad">{cantidad}</span><button onClick={() => setCantidad((n) => Math.min(limite, n + 1))} aria-label="Aumentar cantidad" disabled={cantidad >= limite}>+</button></div>
+            <button className="boton boton-primario boton-agregar-producto" disabled={producto.stock === 0} onClick={() => { try { onAdd(producto, cantidad); setError(''); setMensaje(`¡${cantidad} × ${producto.nombre} agregado al carrito de demostración!`); } catch (err) { setMensaje(''); setError(err.message); } }}>🛒 Agregar al carrito</button>
           </div>
+          {error && <p role="alert">{error}</p>}
           {mensaje && <p className="mensaje-formulario exito" role="status">{mensaje} <Link to="/tienda">Ver carrito</Link></p>}
-          <p className="nota-demo">Catálogo de demostración: las condiciones comerciales siguientes son contenido del prototipo; no hay compra real.</p>
+          <p className="nota-demo">Catálogo de demostración: las condiciones comerciales siguientes son contenido del prototipo; los pagos y pedidos son simulados.</p>
           <div className="beneficios-producto">{[['🚚', 'Envío a todo Chile', 'Recibe en 3 - 5 días'], ['🛡', 'Garantía Nexus', '6 meses de garantía'], ['💳', 'Pago seguro', 'Múltiples métodos']].map(([icono, titulo, texto]) => <div className="beneficio-producto" key={titulo}><span>{icono}</span><div><strong>{titulo}</strong><small>{texto}</small></div></div>)}</div>
         </div>
       </section>

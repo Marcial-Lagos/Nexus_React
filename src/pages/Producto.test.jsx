@@ -37,3 +37,9 @@ it('bloquea agregar un producto sin stock', () => {
   expect(screen.getByText('Sin stock')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /Agregar al carrito/ })).toBeDisabled();
 });
+it('muestra un error de stock al rechazar el agregado y no anuncia éxito', async () => {
+  render(<MemoryRouter><Producto onAdd={() => { throw new Error('No hay stock suficiente'); }} /></MemoryRouter>);
+  await userEvent.click(screen.getByRole('button', { name: /Agregar al carrito/ }));
+  expect(screen.getByRole('alert')).toHaveTextContent('No hay stock suficiente');
+  expect(screen.queryByText(/agregado al carrito de demostración/)).not.toBeInTheDocument();
+});

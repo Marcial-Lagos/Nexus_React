@@ -12,10 +12,10 @@ export default function Tienda({ productos = catalogoInicial, carrito = [], onRe
         <Link className="boton boton-primario" to={`/producto?producto=${encodeURIComponent(producto.nombre)}`} aria-label={`Comprar ${producto.nombre}`}>Comprar</Link>
       </article>)}</div>
       <section className="tarjeta-panel carrito-panel" aria-label="Carrito de demostración">
-        <h2>Tu carrito</h2><p>Demostración local. No se procesan pagos ni pedidos.</p>
+        <h2>Tu carrito</h2><p>Demostración local. Los pedidos y pagos son simulados.</p>
         {carrito.length === 0 ? <p>Tu carrito está vacío.</p> : <>
           <ul className="lista-carrito">{carrito.map((item) => <li key={item.id}><span>{item.nombre} × {item.cantidad}</span><strong>{precioCLP(item.precio * item.cantidad)}</strong><button className="boton boton-suave" onClick={() => onRemove(item.id)} aria-label={`Quitar ${item.nombre}`}>Quitar</button></li>)}</ul>
-          <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap"><strong>Total: {precioCLP(total)}</strong><button className="boton boton-secundario" onClick={onEmpty}>Vaciar carrito</button></div>
+          <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap"><strong>Total: {precioCLP(total)}</strong><Link className="btn btn-primary" to="/checkout">Finalizar compra</Link><button className="boton boton-secundario" onClick={onEmpty}>Vaciar carrito</button></div>
         </>}
       </section>
     </main>

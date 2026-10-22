@@ -52,6 +52,7 @@ export function guardarEntidad(datos, tipo, entrada, usuario) {
 export function eliminarEntidad(datos, tipo, id, usuario) {
   if (!esAdmin(usuario)) throw new Error('Acceso reservado a administradores.');
   if (!['productos', 'categorias', 'usuarios'].includes(tipo)) throw new Error('Sección no editable.');
+  if (tipo === 'productos' && datos.ordenes.some((o) => ['pendiente', 'preparando'].includes(o.estado) && o.items.some((i) => i.id === id))) throw new Error('El producto tiene pedidos activos; cancélalos o despáchalos antes de eliminarlo.');
   if (tipo === 'categorias' && datos.productos.some((p) => p.categoria === id)) throw new Error('La categoría tiene productos; reasígnalos antes de eliminarla.');
   return { ...datos, [tipo]: datos[tipo].filter((item) => item.id !== id) };
 }
