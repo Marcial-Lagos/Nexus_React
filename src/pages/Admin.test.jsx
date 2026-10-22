@@ -1,109 +1,210 @@
-import { render, screen, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router';
-import { describe, expect, test } from 'vitest';
-import App from '../App.jsx';
-import { ADMIN_CORREO, ADMIN_CLAVE, CLAVE_DATOS } from '../data/administracion.js';
-function abrir(ruta = '/admin') { return render(<MemoryRouter initialEntries={[ruta]}><App /></MemoryRouter>); }
-function sesionAdmin() { sessionStorage.setItem('nexus.sesion', JSON.stringify({ nombre: 'Administrador', correo: ADMIN_CORREO, rol: 'admin' })); }
-describe('Página Admin', () => {
-  test('bloquea acceso directo de invitados y clientes', () => {
-    const { unmount } = abrir('/admin/productos');
-    expect(screen.getByRole('heading', { name: 'Acceso administrador' })).toBeInTheDocument();
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
+import { describe, expect, test } from "vitest";
+import App from "../App.jsx";
+import {
+  ADMIN_CORREO,
+  ADMIN_CLAVE,
+  CLAVE_DATOS,
+} from "../data/administracion.js";
+function abrir(ruta = "/admin") {
+  return render(
+    <MemoryRouter initialEntries={[ruta]}>
+      <App />
+    </MemoryRouter>,
+  );
+}
+function sesionAdmin() {
+  sessionStorage.setItem(
+    "nexus.sesion",
+    JSON.stringify({
+      nombre: "Administrador",
+      correo: ADMIN_CORREO,
+      rol: "admin",
+    }),
+  );
+}
+describe("Página Admin", () => {
+  test("bloquea acceso directo de invitados y clientes", () => {
+    const { unmount } = abrir("/admin/productos");
+    expect(
+      screen.getByRole("heading", { name: "Acceso administrador" }),
+    ).toBeInTheDocument();
     unmount();
-    sessionStorage.setItem('nexus.sesion', JSON.stringify({ nombre: 'Ana', correo: 'ana@gmail.com', rol: 'cliente' }));
-    abrir('/admin/usuarios');
-    expect(screen.getByRole('heading', { name: 'Acceso administrador' })).toBeInTheDocument();
+    sessionStorage.setItem(
+      "nexus.sesion",
+      JSON.stringify({
+        nombre: "Ana",
+        correo: "ana@gmail.com",
+        rol: "cliente",
+      }),
+    );
+    abrir("/admin/usuarios");
+    expect(
+      screen.getByRole("heading", { name: "Acceso administrador" }),
+    ).toBeInTheDocument();
   });
-  test('rechaza credenciales incorrectas, permite admin y cierra su sesión', async () => {
-    const user = userEvent.setup(); abrir('/admin/login');
-    await user.type(screen.getByLabelText('Correo administrador'), ADMIN_CORREO);
-    await user.type(screen.getByLabelText('Contraseña administrador'), 'incorrecta');
-    await user.click(screen.getByRole('button', { name: 'Ingresar al panel' }));
-    expect(screen.getByRole('alert')).toHaveTextContent(/incorrectas/);
-    await user.clear(screen.getByLabelText('Contraseña administrador'));
-    await user.type(screen.getByLabelText('Contraseña administrador'), ADMIN_CLAVE);
-    await user.click(screen.getByRole('button', { name: 'Ingresar al panel' }));
-    expect(screen.getByRole('heading', { name: 'Panel de administración' })).toBeInTheDocument();
-    expect(sessionStorage.getItem('nexus.sesion')).not.toContain(ADMIN_CLAVE);
-    await user.click(screen.getByRole('button', { name: 'Cerrar sesión de administrador' }));
-    expect(sessionStorage.getItem('nexus.sesion')).toBeNull();
-    expect(screen.getByRole('heading', { name: 'Acceso administrador' })).toBeInTheDocument();
+  test("rechaza credenciales incorrectas, permite admin y cierra su sesión", async () => {
+    const user = userEvent.setup();
+    abrir("/admin/login");
+    await user.type(
+      screen.getByLabelText("Correo administrador"),
+      ADMIN_CORREO,
+    );
+    await user.type(
+      screen.getByLabelText("Contraseña administrador"),
+      "incorrecta",
+    );
+    await user.click(screen.getByRole("button", { name: "Ingresar al panel" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(/incorrectas/);
+    await user.clear(screen.getByLabelText("Contraseña administrador"));
+    await user.type(
+      screen.getByLabelText("Contraseña administrador"),
+      ADMIN_CLAVE,
+    );
+    await user.click(screen.getByRole("button", { name: "Ingresar al panel" }));
+    expect(
+      screen.getByRole("heading", { name: "Panel de administración" }),
+    ).toBeInTheDocument();
+    expect(sessionStorage.getItem("nexus.sesion")).not.toContain(ADMIN_CLAVE);
+    await user.click(
+      screen.getByRole("button", { name: "Cerrar sesión de administrador" }),
+    );
+    expect(sessionStorage.getItem("nexus.sesion")).toBeNull();
+    expect(
+      screen.getByRole("heading", { name: "Acceso administrador" }),
+    ).toBeInTheDocument();
   });
-  test('crea un producto persistente y lo muestra en la tienda y su detalle', async () => {
-    const user = userEvent.setup(); sesionAdmin(); abrir('/admin/productos');
-    await user.click(screen.getByRole('button', { name: 'Crear registro' }));
-    await user.type(screen.getByLabelText('Nombre'), 'Monitor Nexus');
-    await user.type(screen.getByLabelText('Precio CLP'), '125000');
-    await user.type(screen.getByLabelText('Stock', { exact: true }), '4');
-    await user.click(screen.getByRole('button', { name: 'Guardar registro' }));
-    expect(JSON.parse(localStorage.getItem(CLAVE_DATOS)).productos.at(-1).nombre).toBe('Monitor Nexus');
-    await user.click(screen.getByRole('link', { name: 'Ver tienda' }));
-    await user.click(screen.getByRole('link', { name: 'Comprar Monitor Nexus' }));
-    expect(screen.getByRole('heading', { name: 'Monitor Nexus' })).toBeInTheDocument();
-    expect(screen.getByText('$125.000')).toBeInTheDocument();
+  test("crea un producto persistente y lo muestra en la tienda y su detalle", async () => {
+    const user = userEvent.setup();
+    sesionAdmin();
+    abrir("/admin/productos");
+    await user.click(screen.getByRole("button", { name: "Crear registro" }));
+    await user.type(screen.getByLabelText("Nombre"), "Monitor Nexus");
+    await user.type(screen.getByLabelText("Precio CLP"), "125000");
+    await user.type(screen.getByLabelText("Stock", { exact: true }), "4");
+    await user.click(screen.getByRole("button", { name: "Guardar registro" }));
+    expect(
+      JSON.parse(localStorage.getItem(CLAVE_DATOS)).productos.at(-1).nombre,
+    ).toBe("Monitor Nexus");
+    await user.click(screen.getByRole("link", { name: "Ver tienda" }));
+    await user.click(
+      screen.getByRole("link", { name: "Comprar Monitor Nexus" }),
+    );
+    expect(
+      screen.getByRole("heading", { name: "Monitor Nexus" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("$125.000")).toBeInTheDocument();
   });
-  test('edita, cancela y elimina registros con confirmación, y protege categorías usadas', async () => {
-    const user = userEvent.setup(); sesionAdmin(); abrir('/admin/categorias');
-    await user.click(screen.getByRole('button', { name: 'Eliminar Gaming' }));
-    await user.click(screen.getByRole('button', { name: 'Confirmar eliminación' }));
-    expect(screen.getByRole('alert')).toHaveTextContent(/tiene productos/);
-    await user.click(screen.getByRole('button', { name: 'Crear registro' }));
-    await user.type(screen.getByLabelText('Nombre'), 'Accesorios');
-    await user.click(screen.getByRole('button', { name: 'Guardar registro' }));
-    await user.click(screen.getByRole('button', { name: 'Editar Accesorios' }));
-    await user.clear(screen.getByLabelText('Nombre'));
-    await user.type(screen.getByLabelText('Nombre'), 'Tecnología');
-    await user.click(screen.getByRole('button', { name: 'Guardar registro' }));
-    await user.click(screen.getByRole('button', { name: 'Eliminar Tecnología' }));
-    await user.click(screen.getByRole('button', { name: 'Conservar registro' }));
-    expect(screen.getByRole('button', { name: 'Editar Tecnología' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Eliminar Tecnología' }));
-    await user.click(screen.getByRole('button', { name: 'Confirmar eliminación' }));
-    expect(screen.queryByRole('button', { name: 'Editar Tecnología' })).not.toBeInTheDocument();
+  test("edita, cancela y elimina registros con confirmación, y protege categorías usadas", async () => {
+    const user = userEvent.setup();
+    sesionAdmin();
+    abrir("/admin/categorias");
+    await user.click(screen.getByRole("button", { name: "Eliminar Gaming" }));
+    await user.click(
+      screen.getByRole("button", { name: "Confirmar eliminación" }),
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(/tiene productos/);
+    await user.click(screen.getByRole("button", { name: "Crear registro" }));
+    await user.type(screen.getByLabelText("Nombre"), "Accesorios");
+    await user.click(screen.getByRole("button", { name: "Guardar registro" }));
+    await user.click(screen.getByRole("button", { name: "Editar Accesorios" }));
+    await user.clear(screen.getByLabelText("Nombre"));
+    await user.type(screen.getByLabelText("Nombre"), "Tecnología");
+    await user.click(screen.getByRole("button", { name: "Guardar registro" }));
+    await user.click(
+      screen.getByRole("button", { name: "Eliminar Tecnología" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Conservar registro" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Editar Tecnología" }),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Eliminar Tecnología" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Confirmar eliminación" }),
+    );
+    expect(
+      screen.queryByRole("button", { name: "Editar Tecnología" }),
+    ).not.toBeInTheDocument();
   });
-  test('ofrece reportes de inventario, órdenes vacías y perfil sin simular ventas', async () => {
-    const user = userEvent.setup(); sesionAdmin(); abrir();
-    await user.click(within(screen.getByRole('navigation', { name: 'Administración' })).getByRole('link', { name: 'Reportes' }));
-    expect(screen.getByRole('heading', { name: 'Reporte de inventario' })).toBeInTheDocument();
-    await user.click(screen.getByRole('link', { name: 'Órdenes' }));
+  test("ofrece reportes de inventario, órdenes vacías y perfil sin simular ventas", async () => {
+    const user = userEvent.setup();
+    sesionAdmin();
+    abrir();
+    await user.click(
+      within(
+        screen.getByRole("navigation", { name: "Administración" }),
+      ).getByRole("link", { name: "Reportes" }),
+    );
+    expect(
+      screen.getByRole("heading", { name: "Reporte de inventario" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: "Órdenes" }));
     expect(screen.getByText(/No hay órdenes registradas/)).toBeInTheDocument();
-    await user.click(screen.getByRole('link', { name: 'Perfil' }));
-    expect(screen.getByRole('heading', { name: 'Perfil administrador' })).toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: "Perfil" }));
+    expect(
+      screen.getByRole("heading", { name: "Perfil administrador" }),
+    ).toBeInTheDocument();
   });
-  test('conserva catálogo y rol al recargar la aplicación', async () => {
-    const user = userEvent.setup(); sesionAdmin();
-    const vista = abrir('/admin/productos');
-    await user.click(screen.getByRole('button', { name: 'Editar Teclado Gamer' }));
-    await user.clear(screen.getByLabelText('Precio CLP'));
-    await user.type(screen.getByLabelText('Precio CLP'), '1000');
-    await user.click(screen.getByRole('button', { name: 'Guardar registro' }));
+  test("conserva catálogo y rol al recargar la aplicación", async () => {
+    const user = userEvent.setup();
+    sesionAdmin();
+    const vista = abrir("/admin/productos");
+    await user.click(
+      screen.getByRole("button", { name: "Editar Teclado Gamer" }),
+    );
+    await user.clear(screen.getByLabelText("Precio CLP"));
+    await user.type(screen.getByLabelText("Precio CLP"), "1000");
+    await user.click(screen.getByRole("button", { name: "Guardar registro" }));
     vista.unmount();
-    abrir('/admin/productos');
-    expect(screen.getByRole('heading', { name: 'Panel de administración' })).toBeInTheDocument();
-    expect(screen.getByRole('row', { name: /Teclado Gamer/ })).toHaveTextContent('1000');
+    abrir("/admin/productos");
+    expect(
+      screen.getByRole("heading", { name: "Panel de administración" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("row", { name: /Teclado Gamer/ }),
+    ).toHaveTextContent("1000");
   });
-  test('entra al panel desde el mismo login normal y conserva el rol al recargar', async () => {
-    const user = userEvent.setup(); const vista = abrir('/login');
-    const form = within(screen.getByRole('form', { name: 'Inicio de sesión' }));
-    await user.type(form.getByLabelText('Correo electrónico'), 'ADMIN@NEXUS.CL');
-    await user.type(form.getByLabelText('Contraseña'), ADMIN_CLAVE);
-    await user.click(form.getByRole('button', { name: 'Entrar a Nexus' }));
-    expect(screen.getByRole('heading', { name: 'Panel de administración' })).toBeInTheDocument();
-    expect(JSON.parse(sessionStorage.getItem('nexus.sesion')).rol).toBe('admin');
-    expect(sessionStorage.getItem('nexus.sesion')).not.toContain(ADMIN_CLAVE);
-    vista.unmount(); abrir('/login');
-    expect(screen.getByRole('heading', { name: 'Panel de administración' })).toBeInTheDocument();
+  test("entra al panel desde el mismo login normal y conserva el rol al recargar", async () => {
+    const user = userEvent.setup();
+    const vista = abrir("/login");
+    const form = within(screen.getByRole("form", { name: "Inicio de sesión" }));
+    await user.type(
+      form.getByLabelText("Correo electrónico"),
+      "ADMIN@NEXUS.CL",
+    );
+    await user.type(form.getByLabelText("Contraseña"), ADMIN_CLAVE);
+    await user.click(form.getByRole("button", { name: "Entrar a Nexus" }));
+    expect(
+      screen.getByRole("heading", { name: "Panel de administración" }),
+    ).toBeInTheDocument();
+    expect(JSON.parse(sessionStorage.getItem("nexus.sesion")).rol).toBe(
+      "admin",
+    );
+    expect(sessionStorage.getItem("nexus.sesion")).not.toContain(ADMIN_CLAVE);
+    vista.unmount();
+    abrir("/login");
+    expect(
+      screen.getByRole("heading", { name: "Panel de administración" }),
+    ).toBeInTheDocument();
   });
-  test('una clave admin incorrecta en el login normal no crea sesión de cliente', async () => {
-    const user = userEvent.setup(); abrir('/login');
-    const form = within(screen.getByRole('form', { name: 'Inicio de sesión' }));
-    await user.type(form.getByLabelText('Correo electrónico'), ADMIN_CORREO);
-    await user.type(form.getByLabelText('Contraseña'), 'incorrecta');
-    await user.click(form.getByRole('button', { name: 'Entrar a Nexus' }));
-    expect(form.getByRole('alert')).toHaveTextContent(/Credenciales de administrador incorrectas/);
-    expect(sessionStorage.getItem('nexus.sesion')).toBeNull();
-    await user.clear(form.getByLabelText('Correo electrónico'));
-    expect(form.queryByRole('alert')).not.toBeInTheDocument();
+  test("una clave admin incorrecta en el login normal no crea sesión de cliente", async () => {
+    const user = userEvent.setup();
+    abrir("/login");
+    const form = within(screen.getByRole("form", { name: "Inicio de sesión" }));
+    await user.type(form.getByLabelText("Correo electrónico"), ADMIN_CORREO);
+    await user.type(form.getByLabelText("Contraseña"), "incorrecta");
+    await user.click(form.getByRole("button", { name: "Entrar a Nexus" }));
+    expect(form.getByRole("alert")).toHaveTextContent(
+      /Credenciales de administrador incorrectas/,
+    );
+    expect(sessionStorage.getItem("nexus.sesion")).toBeNull();
+    await user.clear(form.getByLabelText("Correo electrónico"));
+    expect(form.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
