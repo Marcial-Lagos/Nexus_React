@@ -1,8 +1,8 @@
 import { Link } from 'react-router';
 import ImagenProducto from '../components/ImagenProducto.jsx';
-import { productos, precioCLP } from '../data/nexus.js';
+import { productos as catalogoInicial, precioCLP } from '../data/nexus.js';
 
-export default function Tienda({ carrito = [], onRemove, onEmpty }) {
+export default function Tienda({ productos = catalogoInicial, carrito = [], onRemove, onEmpty }) {
   const total = carrito.reduce((suma, item) => suma + item.precio * item.cantidad, 0);
   return (
     <main className="pagina-tienda contenedor-contenido">
@@ -21,4 +21,5 @@ export default function Tienda({ carrito = [], onRemove, onEmpty }) {
     </main>
   );
 }
+
 

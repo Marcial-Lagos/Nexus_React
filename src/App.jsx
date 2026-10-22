@@ -13,16 +13,26 @@ import Stream from './pages/Stream.jsx';
 import { biografiaOriginal } from './data/nexus.js';
 import { guardarSesion, leerSesion } from './utils/sesion.js';
 import './App.css';
+import Admin from './pages/Admin.jsx';
+import AdminLogin from './pages/AdminLogin.jsx';
+import { leerAdministracion, guardarAdministracion, guardarEntidad, eliminarEntidad, esAdmin } from './data/administracion.js';
 
 export default function App() {
   const [usuario, setUsuario] = useState(leerSesion);
+  const [administracion, setAdministracion] = useState(leerAdministracion);
+  const [avisoAdmin, setAvisoAdmin] = useState('');
+  function actualizarDatos(nuevos) {
+    const persistido = guardarAdministracion(nuevos);
+    setAdministracion(nuevos);
+    setAvisoAdmin(persistido ? '' : 'El navegador bloqueó el almacenamiento. Los cambios solo durarán mientras esta página esté abierta.');
+  }
   const [carrito, setCarrito] = useState([]);
   const [menu, setMenu] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const ubicacion = useLocation();
   useEffect(() => { guardarSesion(usuario); }, [usuario]);
-  function iniciarSesion(datos) { setUsuario({ nombre: datos.nombre, correo: datos.correo, invitado: false, biografia: biografiaOriginal }); }
-  function invitado() { setUsuario({ nombre: 'Invitado', correo: '', invitado: true, biografia: biografiaOriginal }); }
+  function iniciarSesion(datos) { setUsuario({ nombre: datos.nombre, correo: datos.correo, invitado: false, rol: 'cliente', biografia: biografiaOriginal }); }
+  function invitado() { setUsuario({ nombre: 'Invitado', correo: '', invitado: true, rol: 'cliente', biografia: biografiaOriginal }); }
   function salir() { setUsuario(null); setCarrito([]); setMenu(false); setBusqueda(''); }
   function agregar(producto, cantidad) {
     setCarrito((actual) => {
@@ -35,6 +45,10 @@ export default function App() {
   const simple = usuario && ['/perfil', '/stream'].includes(ubicacion.pathname);
   const proteger = (pantalla) => usuario ? pantalla : <Navigate to="/login" replace />;
   const titulos = { '/principal': 'Principal', '/comunidad': 'Comunidad', '/contacto': 'Contacto', '/perfil': 'Perfil', '/tienda': 'Tienda', '/producto': 'Producto', '/stream': 'Stream' };
+  if (ubicacion.pathname.startsWith('/admin')) return <Routes>
+    <Route path="/admin/login" element={esAdmin(usuario) ? <Navigate to="/admin" replace /> : <AdminLogin onLogin={setUsuario} />} />
+    <Route path="/admin/*" element={<Admin usuario={usuario} datos={administracion} aviso={avisoAdmin} onLogout={salir} onSave={(tipo, registro) => actualizarDatos(guardarEntidad(administracion, tipo, registro, usuario))} onDelete={(tipo, id) => actualizarDatos(eliminarEntidad(administracion, tipo, id, usuario))} />} />
+  </Routes>;
   return (
     <div className={lateral ? 'cuerpo-aplicacion' : ubicacion.pathname === '/perfil' ? 'pagina-perfil' : ubicacion.pathname === '/stream' ? 'cuerpo-transmision' : ''}>
       <title>Nexus | {titulos[ubicacion.pathname] || 'Inicio de sesión'}</title>
@@ -55,12 +69,13 @@ export default function App() {
         <Route path="/comunidad" element={proteger(<Comunidad usuario={usuario} cantidadCarrito={cantidadCarrito} />)} />
         <Route path="/contacto" element={<Contacto />} />
         <Route path="/perfil" element={proteger(usuario && <Perfil usuario={usuario} onUpdate={(cambios) => setUsuario((actual) => ({ ...actual, ...cambios }))} />)} />
-        <Route path="/tienda" element={proteger(<Tienda carrito={carrito} onRemove={(id) => setCarrito((actual) => actual.filter((item) => item.id !== id))} onEmpty={() => setCarrito([])} />)} />
-        <Route path="/producto" element={proteger(<Producto key={ubicacion.search} onAdd={agregar} />)} />
+        <Route path="/tienda" element={proteger(<Tienda productos={administracion.productos} carrito={carrito} onRemove={(id) => setCarrito((actual) => actual.filter((item) => item.id !== id))} onEmpty={() => setCarrito([])} />)} />
+        <Route path="/producto" element={proteger(<Producto productos={administracion.productos} key={ubicacion.search} onAdd={agregar} />)} />
         <Route path="/stream" element={proteger(<Stream usuario={usuario} />)} />
         <Route path="*" element={<Navigate to={usuario ? '/principal' : '/login'} replace />} />
       </Routes>
     </div>
   );
 }
+
 

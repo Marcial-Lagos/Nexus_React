@@ -31,3 +31,9 @@ it('resuelve un identificador de producto y permite volver si no existe', () => 
   expect(screen.getByRole('link', { name: 'Volver a la tienda' })).toHaveAttribute('href', '/tienda');
 });
 
+
+it('bloquea agregar un producto sin stock', () => {
+  render(<MemoryRouter><Producto productos={[{ id: 'agotado', nombre: 'Agotado', precio: 1000, stock: 0, icono: 'keyboard' }]} onAdd={vi.fn()} /></MemoryRouter>);
+  expect(screen.getByText('Sin stock')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Agregar al carrito/ })).toBeDisabled();
+});

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import ImagenProducto from '../components/ImagenProducto.jsx';
-import { productos, precioCLP } from '../data/nexus.js';
+import { productos as catalogoInicial, precioCLP } from '../data/nexus.js';
 
-export default function Producto({ onAdd }) {
+export default function Producto({ onAdd, productos = catalogoInicial }) {
   const [parametros] = useSearchParams();
   const nombre = parametros.get('producto');
   const producto = productos.find((item) => item.nombre === nombre || item.id === nombre) || (!nombre ? productos[0] : null);
@@ -24,12 +24,12 @@ export default function Producto({ onAdd }) {
           <span className="categoria-producto">NEXUS GAMING</span><h1>{producto.nombre}</h1>
           {producto.modelo && <p className="modelo-producto">{producto.modelo}</p>}
           <div className="valoracion-producto"><span>★ ★ ★ ★ ☆</span><small>4.8 (256 reseñas de demostración)</small></div>
-          <div className="fila-precio-producto"><p className="precio-producto">{precioCLP(producto.precio)}</p><span className="producto-disponible">En stock · demo</span></div>
+          <div className="fila-precio-producto"><p className="precio-producto">{precioCLP(producto.precio)}</p><span className="producto-disponible">{producto.stock === 0 ? 'Sin stock' : 'En stock · demo'}</span></div>
           <p className="descripcion-producto">{producto.descripcion || 'Artículo del catálogo de demostración original de Nexus. La fotografía y la ficha técnica no fueron incluidas en el proyecto original.'}</p>
           {producto.caracteristicas && <ul className="caracteristicas-producto">{producto.caracteristicas.map((texto) => <li key={texto}>✓ {texto}</li>)}</ul>}
           <div className="acciones-producto">
             <div className="selector-cantidad"><button onClick={() => setCantidad((n) => Math.max(1, n - 1))} aria-label="Disminuir cantidad" disabled={cantidad === 1}>−</button><span role="status" aria-label="Cantidad">{cantidad}</span><button onClick={() => setCantidad((n) => Math.min(99, n + 1))} aria-label="Aumentar cantidad" disabled={cantidad === 99}>+</button></div>
-            <button className="boton boton-primario boton-agregar-producto" onClick={() => { onAdd(producto, cantidad); setMensaje(`¡${cantidad} × ${producto.nombre} agregado al carrito de demostración!`); }}>🛒 Agregar al carrito</button>
+            <button className="boton boton-primario boton-agregar-producto" disabled={producto.stock === 0} onClick={() => { onAdd(producto, cantidad); setMensaje(`¡${cantidad} × ${producto.nombre} agregado al carrito de demostración!`); }}>🛒 Agregar al carrito</button>
           </div>
           {mensaje && <p className="mensaje-formulario exito" role="status">{mensaje} <Link to="/tienda">Ver carrito</Link></p>}
           <p className="nota-demo">Catálogo de demostración: las condiciones comerciales siguientes son contenido del prototipo; no hay compra real.</p>
@@ -39,4 +39,5 @@ export default function Producto({ onAdd }) {
     </main>
   );
 }
+
 

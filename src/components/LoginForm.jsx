@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
 import CampoFormulario from './CampoFormulario.jsx';
 import { sinErrores, validarLogin } from '../utils/validaciones.js';
 
@@ -22,6 +23,7 @@ export default function LoginForm({ onLogin, onGuest, onShowRegistro, correoInic
   }
   return (
     <form className="tarjeta-inicio-sesion cara-tarjeta cara-frontal" noValidate onSubmit={enviar} inert={!activo} aria-hidden={!activo} aria-label="Inicio de sesión">
+      <p><Link to="/admin/login">Acceso administrador</Link></p>
       <div className="marca-movil"><span className="simbolo-marca">N</span><span>NEXUS</span></div>
       <span className="indicador-estado">● Comunidad online</span>
       <h2>Bienvenid@ a nuestra comunidad</h2><p className="atenuado">Inicia sesión para entrar a Nexus.</p>
@@ -37,4 +39,5 @@ export default function LoginForm({ onLogin, onGuest, onShowRegistro, correoInic
     </form>
   );
 }
+
 

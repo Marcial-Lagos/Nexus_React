@@ -27,6 +27,7 @@ export default function Navbar({ usuario, onLogout, simple = false, stream = fal
           ['/tienda', '🛒', 'Tienda'], ['/contacto', '✉', 'Contacto'],
         ].map(([to, icono, texto]) => <NavLink key={texto} to={to} className={({ isActive }) => `elemento-navegacion${isActive && texto !== 'Explorar' ? ' activo' : ''}`}><span>{icono}</span>{texto}</NavLink>)}
       </nav>
+      {usuario?.rol === 'admin' && <Link className="elemento-navegacion" to="/admin">Administración</Link>}
       <p className="encabezado-lateral">TRANSMISIÓN DESTACADA</p>
       {transmisiones.slice(0, 1).map((canal) => <Link className="usuario-en-vivo" key={canal.id} to="/stream" onClick={onNavigate}>
         <span className={`avatar avatar-${canal.color}`}>{canal.iniciales}</span>
