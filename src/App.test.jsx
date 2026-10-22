@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import App from './App.jsx';
 import { biografiaOriginal } from './data/nexus.js';
 
@@ -11,7 +11,7 @@ function abrir(ruta = '/', sesion = false) {
   return render(<MemoryRouter initialEntries={[ruta]}><App /></MemoryRouter>);
 }
 describe('Rutas y sesión de Nexus', () => {
-  it.each([
+  test.each([
     ['/principal', /Aprende código/], ['/comunidad', /bienvenida a #general/],
     ['/perfil', 'lLGNDl'], ['/tienda', 'Tienda Nexus'], ['/producto', 'Teclado Gamer'],
     ['/stream', 'Creando una web desde cero'], ['/contacto', 'Hablemos.'],
@@ -19,15 +19,15 @@ describe('Rutas y sesión de Nexus', () => {
     abrir(ruta, true);
     expect(screen.getByRole('heading', { name: titulo })).toBeInTheDocument();
   });
-  it.each(['/', '/login', '/principal', '/perfil', '/comunidad', '/tienda', '/producto', '/stream', '/no-existe'])('muestra acceso sin sesión en %s', (ruta) => {
+  test.each(['/', '/login', '/principal', '/perfil', '/comunidad', '/tienda', '/producto', '/stream', '/no-existe'])('muestra acceso sin sesión en %s', (ruta) => {
     abrir(ruta);
     expect(screen.getByRole('form', { name: 'Inicio de sesión' })).toBeInTheDocument();
   });
-  it.each(['/', '/login', '/no-existe'])('redirige al inicio con sesión en %s', (ruta) => {
+  test.each(['/', '/login', '/no-existe'])('redirige al inicio con sesión en %s', (ruta) => {
     abrir(ruta, true);
     expect(screen.getByRole('heading', { name: /Aprende código/ })).toBeInTheDocument();
   });
-  it('permite entrar como invitado, buscar y cerrar sesión', async () => {
+  test('permite entrar como invitado, buscar y cerrar sesión', async () => {
     const user = userEvent.setup();
     abrir();
     await user.click(screen.getByRole('button', { name: 'Entrar como invitado' }));
@@ -44,7 +44,7 @@ describe('Rutas y sesión de Nexus', () => {
     expect(sessionStorage.getItem('nexus.sesion')).toBeNull();
     expect(screen.getByRole('form', { name: 'Inicio de sesión' })).toBeInTheDocument();
   });
-  it('inicia una sesión de demostración y no persiste la contraseña', async () => {
+  test('inicia una sesión de demostración y no persiste la contraseña', async () => {
     const user = userEvent.setup();
     abrir();
     const form = within(screen.getByRole('form', { name: 'Inicio de sesión' }));
@@ -55,7 +55,7 @@ describe('Rutas y sesión de Nexus', () => {
     expect(sessionStorage.getItem('nexus.sesion')).not.toContain('Clave-PRIVADA1!');
     expect(localStorage.length).toBe(0);
   });
-  it('comparte carrito entre rutas, acumula cantidades y permite quitar o vaciar', async () => {
+  test('comparte carrito entre rutas, acumula cantidades y permite quitar o vaciar', async () => {
     const user = userEvent.setup();
     abrir('/producto', true);
     await user.click(screen.getByRole('button', { name: /Agregar al carrito/ }));
@@ -72,7 +72,7 @@ describe('Rutas y sesión de Nexus', () => {
     await user.click(screen.getByRole('button', { name: 'Vaciar carrito' }));
     expect(screen.getByText('Tu carrito está vacío.')).toBeInTheDocument();
   });
-  it('actualiza el perfil compartido y conserva la sesión al navegar', async () => {
+  test('actualiza el perfil compartido y conserva la sesión al navegar', async () => {
     const user = userEvent.setup();
     abrir('/perfil', true);
     await user.click(screen.getByRole('button', { name: 'Editar perfil' }));
@@ -85,4 +85,5 @@ describe('Rutas y sesión de Nexus', () => {
     expect(screen.getByText('NexusDev')).toBeInTheDocument();
   });
 });
+
 
