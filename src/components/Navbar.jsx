@@ -27,8 +27,8 @@ export default function Navbar({ usuario, onLogout, simple = false, stream = fal
           ['/tienda', '🛒', 'Tienda'], ['/contacto', '✉', 'Contacto'],
         ].map(([to, icono, texto]) => <NavLink key={texto} to={to} className={({ isActive }) => `elemento-navegacion${isActive && texto !== 'Explorar' ? ' activo' : ''}`}><span>{icono}</span>{texto}</NavLink>)}
       </nav>
-      <p className="encabezado-lateral">CANALES EN VIVO</p>
-      {transmisiones.map((canal) => <Link className="usuario-en-vivo" key={canal.id} to="/stream" onClick={onNavigate}>
+      <p className="encabezado-lateral">TRANSMISIÓN DESTACADA</p>
+      {transmisiones.slice(0, 1).map((canal) => <Link className="usuario-en-vivo" key={canal.id} to="/stream" onClick={onNavigate}>
         <span className={`avatar avatar-${canal.color}`}>{canal.iniciales}</span>
         <span><strong>{canal.nombre}</strong><small>{canal.categoria}</small></span><b>● {canal.espectadores}</b>
       </Link>)}
@@ -40,4 +40,5 @@ export default function Navbar({ usuario, onLogout, simple = false, stream = fal
     </aside>
   );
 }
+
 

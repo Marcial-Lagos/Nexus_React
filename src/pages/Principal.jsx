@@ -23,15 +23,10 @@ export default function Principal({ busqueda = '', onClearSearch }) {
           <div className="cuadricula-transmisiones">{canales.map((canal) => <TarjetaTransmision key={canal.id} canal={canal} />)}</div>
           {canales.length === 0 && <p className="busqueda-vacia visible" role="status">No existen canales con esa búsqueda.</p>}
         </section>
-        <section className="bloque-seccion">
-          <div className="titulo-seccion"><div><span className="subtitulo">DESCUBRE</span><h2>Categorías populares</h2></div></div>
-          <div className="cuadricula-categorias">{[
-            ['uno', '🎮', 'Gaming', '12.8K'], ['dos', '⌨', 'Programación', '3.4K'], ['tres', '♫', 'Música', '8.1K'], ['cuatro', '☕', 'Charlando', '18.2K'],
-          ].map(([clase, simbolo, nombre, cantidad]) => <Link key={nombre} className={`tarjeta-categoria categoria-${clase}`} to={nombre === 'Programación' ? '/comunidad?canal=programación' : '/comunidad'}><span>{simbolo}</span><strong>{nombre}</strong><small>{cantidad} Conectados</small></Link>)}</div>
-        </section>
       </div>
       <Footer />
     </main>
   );
 }
+
 

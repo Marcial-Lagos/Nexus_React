@@ -27,3 +27,12 @@ it('busca desde el stream y vuelve a Principal con la consulta', async () => {
   expect(screen.getByRole('heading', { name: 'Canales' })).toBeInTheDocument();
 });
 
+
+
+it('muestra una única transmisión destacada en la navegación lateral', () => {
+  render(<MemoryRouter><Navbar usuario={{ nombre: 'Ana' }} /></MemoryRouter>);
+  expect(screen.getByText('TRANSMISIÓN DESTACADA')).toBeInTheDocument();
+  const streams = screen.getAllByRole('link').filter((enlace) => enlace.getAttribute('href') === '/stream');
+  expect(streams).toHaveLength(1);
+  expect(streams[0]).toHaveTextContent('lLGNDl');
+});
