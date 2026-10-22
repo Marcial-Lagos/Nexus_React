@@ -3,7 +3,9 @@ import { Link, useSearchParams } from 'react-router';
 import ImagenProducto from '../components/ImagenProducto.jsx';
 import { productos as catalogoInicial, precioCLP } from '../data/nexus.js';
 
-export default function Producto({ onAdd, productos = catalogoInicial }) {
+import { precioVenta, tieneOferta } from '../data/catalogo.js';
+
+export default function Producto({ onAdd, categorias = [], productos = catalogoInicial }) {
   const [parametros] = useSearchParams();
   const nombre = parametros.get('producto');
   const producto = productos.find((item) => item.nombre === nombre || item.id === nombre) || (!nombre ? productos[0] : null);
@@ -23,10 +25,10 @@ export default function Producto({ onAdd, productos = catalogoInicial }) {
           <div className="miniaturas-producto">{[0, 1, 2].map((indice) => <button key={indice} className={`miniatura-producto${vista === indice ? ' activa' : ''}`} onClick={() => setVista(indice)} aria-label={`Vista ${indice + 1}`} aria-pressed={vista === indice}><ImagenProducto producto={producto} /></button>)}</div>
         </div>
         <div className="informacion-detalle-producto">
-          <span className="categoria-producto">NEXUS GAMING</span><h1>{producto.nombre}</h1>
+          <span className="categoria-producto">{categorias.find((c) => c.id === producto.categoria)?.nombre || 'NEXUS GAMING'}</span><h1>{producto.nombre}</h1>
           {producto.modelo && <p className="modelo-producto">{producto.modelo}</p>}
           <div className="valoracion-producto"><span>★ ★ ★ ★ ☆</span><small>4.8 (256 reseñas de demostración)</small></div>
-          <div className="fila-precio-producto"><p className="precio-producto">{precioCLP(producto.precio)}</p><span className="producto-disponible">{producto.stock === 0 ? 'Sin stock' : 'En stock · demo'}</span></div>
+          <div className="fila-precio-producto">{tieneOferta(producto) && <span><span className="badge text-bg-success">Oferta</span> <del aria-label="Precio normal">{precioCLP(producto.precio)}</del></span>}<p className="precio-producto">{precioCLP(precioVenta(producto))}</p><span className="producto-disponible">{producto.stock === 0 ? 'Sin stock' : 'En stock · demo'}</span></div>
           <p className="descripcion-producto">{producto.descripcion || 'Artículo del catálogo de demostración original de Nexus. La fotografía y la ficha técnica no fueron incluidas en el proyecto original.'}</p>
           {producto.caracteristicas && <ul className="caracteristicas-producto">{producto.caracteristicas.map((texto) => <li key={texto}>✓ {texto}</li>)}</ul>}
           <div className="acciones-producto">

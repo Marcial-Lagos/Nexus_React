@@ -39,7 +39,9 @@ export function guardarEntidad(datos, tipo, entrada, usuario) {
     if (String(entrada.precio).trim() === '' || !Number.isSafeInteger(Number(entrada.precio)) || Number(entrada.precio) <= 0) throw new Error('El precio debe ser un entero positivo en CLP.');
     if (String(entrada.stock).trim() === '' || !Number.isSafeInteger(Number(entrada.stock)) || Number(entrada.stock) < 0) throw new Error('El stock debe ser un entero mayor o igual a cero.');
     if (!datos.categorias.some((c) => c.id === entrada.categoria)) throw new Error('Selecciona una categoría válida.');
-    Object.assign(registro, { precio: Number(entrada.precio), stock: Number(entrada.stock), categoria: entrada.categoria, descripcion: (entrada.descripcion || '').trim() });
+    const precioOferta = entrada.precioOferta == null || String(entrada.precioOferta).trim() === '' ? null : Number(entrada.precioOferta);
+    if (precioOferta !== null && (!Number.isSafeInteger(precioOferta) || precioOferta <= 0 || precioOferta >= Number(entrada.precio))) throw new Error('El precio de oferta debe ser un entero positivo menor al precio normal.');
+    Object.assign(registro, { precioOferta, precio: Number(entrada.precio), stock: Number(entrada.stock), categoria: entrada.categoria, descripcion: (entrada.descripcion || '').trim() });
   }
   if (tipo === 'usuarios') {
     const correo = (entrada.correo || '').trim().toLowerCase();

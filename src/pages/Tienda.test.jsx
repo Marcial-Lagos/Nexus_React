@@ -19,3 +19,30 @@ it('calcula el total y permite quitar productos y vaciar', async () => {
   expect(vaciar).toHaveBeenCalledOnce();
 });
 
+
+it('restaura filtros desde URL, combina controles y limpia resultados vacíos', async () => {
+  const user = userEvent.setup();
+  const productos = [
+    { id: 'a', nombre: 'Audio', categoria: 'audio', stock: 2, precio: 100, precioOferta: 50 },
+    { id: 'b', nombre: 'Teclado', categoria: 'gaming', stock: 0, precio: 70 },
+  ];
+  render(<MemoryRouter initialEntries={['/tienda?ofertas=1']}><Tienda productos={productos} categorias={[{ id: 'audio', nombre: 'Audio' }, { id: 'gaming', nombre: 'Gaming' }]} /></MemoryRouter>);
+  expect(screen.getByLabelText('Solo ofertas')).toBeChecked();
+  expect(screen.getAllByRole('article')).toHaveLength(1);
+  expect(screen.getByLabelText('Precio normal')).toHaveTextContent('$100');
+  await user.click(screen.getByLabelText('Solo ofertas'));
+  await user.selectOptions(screen.getByLabelText('Ordenar por'), 'precio-desc');
+  expect(screen.getAllByRole('article')[0]).toHaveTextContent('Teclado');
+  await user.selectOptions(screen.getByLabelText('Categoría'), 'gaming');
+  await user.click(screen.getByLabelText('Solo disponibles'));
+  expect(screen.getByText('No hay productos que coincidan con los filtros.')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Limpiar filtros' }));
+  expect(screen.getAllByRole('article')).toHaveLength(2);
+  await user.type(screen.getByLabelText('Buscar productos'), 'audio');
+  expect(screen.getAllByRole('article')).toHaveLength(1);
+});
+it('muestra una categoría eliminada de una URL antigua sin mostrar productos ajenos', () => {
+  render(<MemoryRouter initialEntries={['/tienda?categoria=eliminada']}><Tienda /></MemoryRouter>);
+  expect(screen.getByRole('option', { name: 'Categoría no disponible' })).toBeInTheDocument();
+  expect(screen.queryAllByRole('article')).toHaveLength(0);
+});

@@ -20,6 +20,8 @@ import Admin from './pages/Admin.jsx';
 import AdminLogin from './pages/AdminLogin.jsx';
 import { leerAdministracion, guardarAdministracion, guardarEntidad, eliminarEntidad, esAdmin } from './data/administracion.js';
 
+import { precioVenta } from './data/catalogo.js';
+
 export default function App() {
   const [usuario, setUsuario] = useState(() => { const sesion = leerSesion(); return sesion ? { ...sesion, id: sesion.id || crypto.randomUUID() } : null; });
   const [administracion, setAdministracion] = useState(leerAdministracion);
@@ -58,7 +60,7 @@ export default function App() {
     if (!actual || !Number.isSafeInteger(cantidad) || cantidad < 1 || acumulado > actual.stock) throw new Error('No hay stock suficiente para agregar esa cantidad.');
     setCarrito((actual) => {
       const existente = actual.find((item) => item.id === producto.id);
-      return existente ? actual.map((item) => item.id === producto.id ? { ...item, cantidad: item.cantidad + cantidad } : item) : [...actual, { id: producto.id, nombre: producto.nombre, precio: producto.precio, cantidad }];
+      return existente ? actual.map((item) => item.id === producto.id ? { ...item, cantidad: item.cantidad + cantidad } : item) : [...actual, { id: producto.id, nombre: producto.nombre, precio: precioVenta(producto), cantidad }];
     });
   }
   const cantidadCarrito = carrito.reduce((suma, item) => suma + item.cantidad, 0);
@@ -92,8 +94,8 @@ export default function App() {
         <Route path="/comunidad" element={proteger(<Comunidad usuario={usuario} cantidadCarrito={cantidadCarrito} />)} />
         <Route path="/contacto" element={<Contacto />} />
         <Route path="/perfil" element={proteger(usuario && <Perfil usuario={usuario} onUpdate={(cambios) => setUsuario((actual) => ({ ...actual, ...cambios }))} />)} />
-        <Route path="/tienda" element={proteger(<Tienda productos={administracion.productos} carrito={carrito} onRemove={(id) => setCarrito((actual) => actual.filter((item) => item.id !== id))} onEmpty={() => setCarrito([])} />)} />
-        <Route path="/producto" element={proteger(<Producto productos={administracion.productos} key={ubicacion.search} onAdd={agregar} />)} />
+        <Route path="/tienda" element={proteger(<Tienda categorias={administracion.categorias} productos={administracion.productos} carrito={carrito} onRemove={(id) => setCarrito((actual) => actual.filter((item) => item.id !== id))} onEmpty={() => setCarrito([])} />)} />
+        <Route path="/producto" element={proteger(<Producto categorias={administracion.categorias} productos={administracion.productos} key={ubicacion.search} onAdd={agregar} />)} />
         <Route path="/stream" element={proteger(<Stream usuario={usuario} />)} />
         <Route path="*" element={<Navigate to={usuario ? esAdmin(usuario) ? '/admin' : '/principal' : '/login'} replace />} />
       </Routes>

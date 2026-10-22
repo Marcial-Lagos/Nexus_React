@@ -1,5 +1,5 @@
 import { useState } from 'react';
-const vacio = { nombre: '', precio: '', stock: '', categoria: '', descripcion: '', correo: '' };
+const vacio = { nombre: '', precio: '', precioOferta: '', stock: '', categoria: '', descripcion: '', correo: '' };
 export default function AdminColeccion({ tipo, datos, onSave, onDelete }) {
   const [edicion, setEdicion] = useState(null);
   const [pendiente, setPendiente] = useState(null);
@@ -16,7 +16,7 @@ export default function AdminColeccion({ tipo, datos, onSave, onDelete }) {
     {mensaje && <p role="status">{mensaje}</p>}{error && <p role="alert">{error}</p>}
     {edicion && <form className="border rounded p-3 my-3" aria-label="Editar registro" onSubmit={(e) => { e.preventDefault(); try { onSave(tipo, edicion); setEdicion(null); setError(''); setMensaje('Registro guardado.'); } catch (err) { setError(err.message); } }}>
       <h3>{edicion.id ? 'Editar registro' : 'Nuevo registro'}</h3>{campo('nombre', 'Nombre')}
-      {producto && <>{campo('precio', 'Precio CLP', 'number')}{campo('stock', 'Stock', 'number')}<label htmlFor="categoria">Categoría</label><select className="form-select mb-3" id="categoria" required value={edicion.categoria} onChange={(e) => setEdicion({ ...edicion, categoria: e.target.value })}><option value="">Seleccionar</option>{datos.categorias.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select><label htmlFor="descripcion">Descripción</label><textarea className="form-control mb-3" id="descripcion" value={edicion.descripcion || ''} onChange={(e) => setEdicion({ ...edicion, descripcion: e.target.value })} /></>}
+      {producto && <>{campo('precio', 'Precio CLP', 'number')}<label htmlFor="precioOferta">Precio de oferta CLP (opcional)</label><input id="precioOferta" className="form-control mb-3" type="number" min="1" step="1" value={edicion.precioOferta ?? ''} onChange={(e) => setEdicion({ ...edicion, precioOferta: e.target.value })} /><p>Debe ser menor al precio normal. Deja vacío para quitar la oferta.</p>{campo('stock', 'Stock', 'number')}<label htmlFor="categoria">Categoría</label><select className="form-select mb-3" id="categoria" required value={edicion.categoria} onChange={(e) => setEdicion({ ...edicion, categoria: e.target.value })}><option value="">Seleccionar</option>{datos.categorias.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select><label htmlFor="descripcion">Descripción</label><textarea className="form-control mb-3" id="descripcion" value={edicion.descripcion || ''} onChange={(e) => setEdicion({ ...edicion, descripcion: e.target.value })} /></>}
       {usuario && campo('correo', 'Correo electrónico', 'email')}
       <button className="btn btn-success me-2" type="submit">Guardar registro</button><button className="btn btn-outline-secondary" type="button" onClick={() => { setEdicion(null); setError(''); }}>Cancelar edición</button>
     </form>}

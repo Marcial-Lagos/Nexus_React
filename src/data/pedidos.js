@@ -1,4 +1,5 @@
 import { esAdmin } from './administracion.js';
+import { precioVenta } from './catalogo.js';
 export const COSTO_ENVIO = 3990;
 export function validarEntrega(datos) {
   const errores = {};
@@ -23,8 +24,8 @@ export function prepararCompra(datos, carrito, entrega) {
     if (!producto) throw new Error('Un producto ya no está disponible. Quítalo del carrito.');
     if (!Number.isSafeInteger(producto.stock) || cantidad > producto.stock) throw new Error(`Stock insuficiente para ${producto.nombre}. Disponible: ${producto.stock}.`);
     if (!Number.isSafeInteger(producto.precio) || producto.precio <= 0) throw new Error('Precio inválido en el catálogo.');
-    if (carrito.some((p) => p.id === id && p.precio !== producto.precio)) throw new Error(`El precio de ${producto.nombre} cambió. Quítalo y agrégalo nuevamente para aceptar el precio actualizado.`);
-    return { id, nombre: producto.nombre, precio: producto.precio, cantidad };
+    if (carrito.some((p) => p.id === id && p.precio !== precioVenta(producto))) throw new Error(`El precio de ${producto.nombre} cambió. Quítalo y agrégalo nuevamente para aceptar el precio actualizado.`);
+    return { id, nombre: producto.nombre, precio: precioVenta(producto), cantidad };
   });
   const subtotal = items.reduce((s, p) => s + p.precio * p.cantidad, 0);
   const envio = entrega === 'domicilio' ? COSTO_ENVIO : 0;
