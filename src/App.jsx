@@ -141,6 +141,20 @@ export default function App() {
           ];
     });
   }
+  function cambiarCantidad(id, diferencia) {
+    const stock =
+      administracion.productos.find((producto) => producto.id === id)?.stock ?? 0;
+    setCarrito((actual) =>
+      actual.map((item) => {
+        if (item.id !== id) return item;
+        const cantidad = item.cantidad + diferencia;
+        if (cantidad < 1 || (diferencia > 0 && cantidad > stock)) {
+          return item;
+        }
+        return { ...item, cantidad };
+      }),
+    );
+  }
   const cantidadCarrito = carrito.reduce(
     (suma, item) => suma + item.cantidad,
     0,
@@ -361,6 +375,7 @@ export default function App() {
               categorias={administracion.categorias}
               productos={administracion.productos}
               carrito={carrito}
+              onChangeQuantity={cambiarCantidad}
               onRemove={(id) =>
                 setCarrito((actual) => actual.filter((item) => item.id !== id))
               }
