@@ -8,6 +8,7 @@ export default function Tienda({
   categorias = [{ id: "gaming", nombre: "Gaming" }],
   productos = catalogoInicial,
   carrito = [],
+  onChangeQuantity,
   onRemove,
   onEmpty,
 }) {
@@ -154,9 +155,31 @@ export default function Tienda({
             <ul className="lista-carrito">
               {carrito.map((item) => (
                 <li key={item.id}>
-                  <span>
-                    {item.nombre} × {item.cantidad}
-                  </span>
+                  <span>{item.nombre}</span>
+                  <div className="d-flex align-items-center gap-2">
+                    <button
+                      type="button"
+                      className="boton boton-suave"
+                      onClick={() => onChangeQuantity(item.id, -1)}
+                      disabled={item.cantidad <= 1}
+                      aria-label={`Disminuir cantidad de ${item.nombre}`}
+                    >
+                      −
+                    </button>
+                    <strong>{item.cantidad}</strong>
+                    <button
+                      type="button"
+                      className="boton boton-suave"
+                      onClick={() => onChangeQuantity(item.id, 1)}
+                      disabled={
+                        item.cantidad >=
+                        (productos.find((p) => p.id === item.id)?.stock ?? 0)
+                      }
+                      aria-label={`Aumentar cantidad de ${item.nombre}`}
+                    >
+                      +
+                    </button>
+                  </div>
                   <strong>{precioCLP(item.precio * item.cantidad)}</strong>
                   <button
                     className="boton boton-suave"
