@@ -9,6 +9,7 @@ export function leerSesion() {
           nombre: datos.nombre,
           correo: typeof datos.correo === "string" ? datos.correo : "",
           invitado: Boolean(datos.invitado),
+          autenticadoApi: Boolean(datos.autenticadoApi),
           rol:
             datos.rol === "admin" && datos.correo === "admin@nexus.cl"
               ? "admin"
@@ -35,8 +36,11 @@ export function guardarSesion(usuario) {
           nombre: usuario.nombre,
           correo: usuario.correo,
           invitado: usuario.invitado,
+          autenticadoApi: Boolean(usuario.autenticadoApi),
           biografia: usuario.biografia,
         }),
       );
-  } catch {}
+  } catch {
+    // El almacenamiento de sesión puede estar deshabilitado por el navegador.
+  }
 }

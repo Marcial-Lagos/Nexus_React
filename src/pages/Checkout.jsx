@@ -3,7 +3,13 @@ import { Link, useNavigate } from "react-router";
 import CampoFormulario from "../components/CampoFormulario.jsx";
 import { validarEntrega, prepararCompra } from "../data/pedidos.js";
 import { precioCLP } from "../data/nexus.js";
-export default function Checkout({ usuario, datos, carrito, onConfirm }) {
+export default function Checkout({
+  usuario,
+  datos,
+  carrito,
+  onConfirm,
+  apiMode = false,
+}) {
   const [form, setForm] = useState({
     nombre: usuario?.nombre || "",
     correo: usuario?.correo || "",
@@ -14,6 +20,7 @@ export default function Checkout({ usuario, datos, carrito, onConfirm }) {
   const [errores, setErrores] = useState({});
   const [error, setError] = useState("");
   const [pago, setPago] = useState("aprobado");
+  const [enviando, setEnviando] = useState(false);
   const compraId = useRef(crypto.randomUUID());
   const ocupado = useRef(false);
   const navegar = useNavigate();
@@ -39,15 +46,18 @@ export default function Checkout({ usuario, datos, carrito, onConfirm }) {
       />
     );
   }
-  function confirmar(e) {
+  async function confirmar(e) {
     e.preventDefault();
-    if (ocupado.current) return;
+    if (ocupado.current || enviando) return;
     const validaciones = validarEntrega(form);
     setErrores(validaciones);
     if (Object.keys(validaciones).length) return;
     ocupado.current = true;
+    setEnviando(true);
     try {
-      const resultado = onConfirm(form, pago, compraId.current);
+      const resultado = apiMode
+        ? await onConfirm(form, pago, compraId.current)
+        : onConfirm(form, pago, compraId.current);
       navegar(
         resultado.rechazado
           ? "/compra/rechazada"
@@ -60,6 +70,8 @@ export default function Checkout({ usuario, datos, carrito, onConfirm }) {
     } catch (err) {
       setError(err.message);
       ocupado.current = false;
+    } finally {
+      setEnviando(false);
     }
   }
   return (
@@ -67,8 +79,9 @@ export default function Checkout({ usuario, datos, carrito, onConfirm }) {
       <Link to="/tienda">Volver al carrito</Link>
       <h1 className="my-3">Finalizar compra</h1>
       <p>
-        Compra de demostración. No se cobran pagos reales ni se solicitan datos
-        bancarios.
+        {apiMode
+          ? "El pedido se enviará al servidor. Los campos de entrega se conservan solo en esta pantalla porque el contrato auditado no define datos de despacho; no se procesará un pago."
+          : "Compra de demostración. No se cobran pagos reales ni se solicitan datos bancarios."}
       </p>
       {errorCarrito ? (
         <p role="alert">{errorCarrito}</p>
@@ -95,24 +108,36 @@ export default function Checkout({ usuario, datos, carrito, onConfirm }) {
                   {campo("comuna", "Comuna")}
                 </>
               )}
-              <label htmlFor="pagoSimulado">Resultado del pago de prueba</label>
-              <select
-                id="pagoSimulado"
-                className="form-select my-2"
-                value={pago}
-                onChange={(e) => setPago(e.target.value)}
-              >
-                <option value="aprobado">Simular pago aprobado</option>
-                <option value="rechazado">Simular pago rechazado</option>
-              </select>
+              {!apiMode && (
+                <>
+                  <label htmlFor="pagoSimulado">Resultado del pago de prueba</label>
+                  <select
+                    id="pagoSimulado"
+                    className="form-select my-2"
+                    value={pago}
+                    onChange={(e) => setPago(e.target.value)}
+                  >
+                    <option value="aprobado">Simular pago aprobado</option>
+                    <option value="rechazado">Simular pago rechazado</option>
+                  </select>
+                </>
+              )}
               {error && <p role="alert">{error}</p>}
-              <button className="btn btn-primary mt-3" type="submit">
-                Confirmar compra simulada
+              <button
+                className="btn btn-primary mt-3"
+                type="submit"
+                disabled={enviando}
+              >
+                {enviando
+                  ? "Enviando pedido…"
+                  : apiMode
+                    ? "Crear pedido"
+                    : "Confirmar compra simulada"}
               </button>
             </form>
           </section>
           <section className="col-md-5" aria-label="Resumen de compra">
-            <h2>Resumen</h2>
+            <h2>{apiMode ? "Estimación del catálogo" : "Resumen"}</h2>
             <ul>
               {resumen.items.map((i) => (
                 <li key={i.id}>
@@ -120,9 +145,18 @@ export default function Checkout({ usuario, datos, carrito, onConfirm }) {
                 </li>
               ))}
             </ul>
-            <p>Subtotal: {precioCLP(resumen.subtotal)}</p>
-            <p>Envío: {precioCLP(resumen.envio)}</p>
-            <strong>Total: {precioCLP(resumen.total)}</strong>
+            {apiMode ? (
+              <p>
+                El servidor valida precios, stock y monto final. Esta estimación
+                y los datos de entrega no se envían en el contrato disponible.
+              </p>
+            ) : (
+              <>
+                <p>Subtotal: {precioCLP(resumen.subtotal)}</p>
+                <p>Envío: {precioCLP(resumen.envio)}</p>
+                <strong>Total: {precioCLP(resumen.total)}</strong>
+              </>
+            )}
           </section>
         </div>
       )}

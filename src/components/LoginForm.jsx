@@ -10,11 +10,14 @@ export default function LoginForm({
   correoInicial = "",
   aviso = "",
   activo = true,
+  apiMode = false,
+  onAuthenticate,
 }) {
   const [datos, setDatos] = useState({ correo: correoInicial, contrasena: "" });
   const [errores, setErrores] = useState({});
   const [errorAcceso, setErrorAcceso] = useState("");
   const [recuperacion, setRecuperacion] = useState(false);
+  const [cargando, setCargando] = useState(false);
   const correoRef = useRef(null);
   useEffect(() => {
     if (activo) correoRef.current?.focus();
@@ -28,12 +31,28 @@ export default function LoginForm({
       [campo]: validarLogin(nuevos)[campo],
     }));
   }
-  function enviar(evento) {
+  async function enviar(evento) {
     evento.preventDefault();
+    if (cargando) return;
     const resultado = validarLogin(datos);
     setErrores(resultado);
     setErrorAcceso("");
     if (!sinErrores(resultado)) return;
+    if (onAuthenticate) {
+      setCargando(true);
+      try {
+        await onAuthenticate({
+          correo: datos.correo.trim(),
+          contrasena: datos.contrasena,
+        });
+        setDatos((actual) => ({ ...actual, contrasena: "" }));
+      } catch (error) {
+        setErrorAcceso(error.message || "No se pudo iniciar sesión.");
+      } finally {
+        setCargando(false);
+      }
+      return;
+    }
     if (datos.correo.trim().toLowerCase() === ADMIN_CORREO) {
       const administrador = autenticarAdmin(datos.correo, datos.contrasena);
       if (!administrador) {
@@ -63,8 +82,9 @@ export default function LoginForm({
       <h2>Bienvenid@ a nuestra comunidad</h2>
       <p className="atenuado">Inicia sesión para entrar a Nexus.</p>
       <p className="nota-demo">
-        Demostración local: se valida el formato, sin autenticar una cuenta
-        real.
+        {apiMode
+          ? "Inicia sesión con tu cuenta del servidor Nexus."
+          : "Demostración local: se valida el formato, sin autenticar una cuenta real."}
       </p>
       {aviso && (
         <p className="mensaje-formulario exito" role="status">
@@ -113,13 +133,18 @@ export default function LoginForm({
           {errorAcceso}
         </p>
       )}
-      <button className="boton boton-primario boton-bloque" type="submit">
-        Entrar a Nexus
+      <button
+        className="boton boton-primario boton-bloque"
+        type="submit"
+        disabled={cargando}
+      >
+        {cargando ? "Conectando…" : "Entrar a Nexus"}
       </button>
       <button
         className="boton boton-secundario boton-bloque"
         type="button"
         onClick={onGuest}
+        disabled={cargando}
       >
         Entrar como invitado
       </button>

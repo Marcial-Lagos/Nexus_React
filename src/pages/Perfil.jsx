@@ -2,25 +2,50 @@ import { useState } from "react";
 import { Link } from "react-router";
 import Modal from "../components/Modal.jsx";
 import CampoFormulario from "../components/CampoFormulario.jsx";
+import { precioCLP } from "../data/nexus.js";
 
-export default function Perfil({ usuario, onUpdate }) {
+export default function Perfil({
+  usuario,
+  onUpdate,
+  apiMode = false,
+  cargando = false,
+  error = "",
+  pedidos = [],
+  errorPedidos = "",
+}) {
   const [editando, setEditando] = useState(false);
   const [nombre, setNombre] = useState(usuario.nombre);
   const [biografia, setBiografia] = useState(usuario.biografia);
   const [aviso, setAviso] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [errorGuardado, setErrorGuardado] = useState(false);
   function editar() {
     setNombre(usuario.nombre);
     setBiografia(usuario.biografia);
     setEditando(true);
   }
-  function guardar(evento) {
+  async function guardar(evento) {
     evento.preventDefault();
-    onUpdate({
-      nombre: nombre.trim() || "Marcial",
-      biografia: biografia.trim(),
-    });
-    setEditando(false);
-    setAviso("Perfil actualizado en esta sesión de demostración.");
+    setGuardando(true);
+    setAviso("");
+    setErrorGuardado(false);
+    try {
+      await onUpdate({
+        nombre: nombre.trim() || "Marcial",
+        biografia: biografia.trim(),
+      });
+      setEditando(false);
+      setAviso(
+        apiMode
+          ? "Perfil actualizado en el servidor. La biografía se conserva en esta sesión."
+          : "Perfil actualizado en esta sesión de demostración.",
+      );
+    } catch (err) {
+      setAviso(err.message || "No se pudo actualizar el perfil.");
+      setErrorGuardado(true);
+    } finally {
+      setGuardando(false);
+    }
   }
   return (
     <main className="contenido-perfil">
@@ -55,8 +80,17 @@ export default function Perfil({ usuario, onUpdate }) {
         </button>
       </section>
       {aviso && (
-        <p className="mensaje-formulario exito" role="status">
+        <p
+          className={`mensaje-formulario ${errorGuardado ? "error" : "exito"}`}
+          role={errorGuardado ? "alert" : "status"}
+        >
           {aviso}
+        </p>
+      )}
+      {cargando && <p role="status">Cargando perfil e historial…</p>}
+      {error && (
+        <p className="alert alert-warning" role="alert">
+          No se pudo recuperar el perfil del servidor: {error}
         </p>
       )}
       <div className="columnas-perfil">
@@ -114,6 +148,44 @@ export default function Perfil({ usuario, onUpdate }) {
           </p>
         </section>
       </div>
+      {apiMode && (
+        <section
+          className="tarjeta-panel mt-4"
+          aria-label="Historial de pedidos"
+        >
+          <h2>Mis pedidos</h2>
+          {errorPedidos && (
+            <p className="alert alert-warning" role="alert">
+              No se pudo cargar el historial: {errorPedidos}
+            </p>
+          )}
+          {!errorPedidos && pedidos.length === 0 && !cargando && (
+            <p>Aún no hay pedidos registrados para esta cuenta.</p>
+          )}
+          {pedidos.map((pedido) => (
+            <article
+              key={pedido.id}
+              className="d-flex justify-content-between gap-3 border-bottom py-2"
+            >
+              <div>
+                <strong>Pedido {pedido.id}</strong>
+                <p className="mb-0">
+                  {pedido.fecha
+                    ? new Date(pedido.fecha).toLocaleDateString()
+                    : "Fecha no disponible"}
+                  {" · "}
+                  {pedido.estado}
+                </p>
+              </div>
+              <strong>
+                {pedido.total == null
+                  ? "Monto no disponible"
+                  : precioCLP(pedido.total)}
+              </strong>
+            </article>
+          ))}
+        </section>
+      )}
       {editando && (
         <Modal titulo="Editar perfil" onClose={() => setEditando(false)}>
           <form onSubmit={guardar}>
@@ -138,11 +210,16 @@ export default function Perfil({ usuario, onUpdate }) {
                 className="boton boton-suave"
                 type="button"
                 onClick={() => setEditando(false)}
+                disabled={guardando}
               >
                 Cancelar
               </button>
-              <button className="boton boton-primario" type="submit">
-                Guardar cambios
+              <button
+                className="boton boton-primario"
+                type="submit"
+                disabled={guardando}
+              >
+                {guardando ? "Guardando…" : "Guardar cambios"}
               </button>
             </div>
           </form>

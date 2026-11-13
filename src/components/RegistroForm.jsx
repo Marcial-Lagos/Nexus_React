@@ -15,12 +15,16 @@ const inicial = {
 
 export default function RegistroForm({
   onRegistered,
+  onRegister,
   onShowLogin,
   activo = false,
+  apiMode = false,
 }) {
   const [datos, setDatos] = useState(inicial);
   const [tocados, setTocados] = useState({});
   const [enviado, setEnviado] = useState(false);
+  const [cargando, setCargando] = useState(false);
+  const [errorServidor, setErrorServidor] = useState("");
   const nombreRef = useRef(null);
   useEffect(() => {
     if (activo) nombreRef.current?.focus();
@@ -46,15 +50,33 @@ export default function RegistroForm({
       />
     );
   }
-  function enviar(evento) {
+  async function enviar(evento) {
     evento.preventDefault();
     setEnviado(true);
+    if (cargando) return;
     if (!sinErrores(errores)) return;
-    // El registro original también es simulado; no se guardan credenciales.
-    onRegistered({
+    setErrorServidor("");
+    const cuenta = {
       correo: datos.correo.trim(),
       usuario: datos.usuario.trim(),
-    });
+    };
+    if (onRegister) {
+      setCargando(true);
+      try {
+        const resultado = await onRegister({ ...datos });
+        onRegistered({ ...cuenta, servidor: true, autenticado: resultado?.autenticado });
+        setDatos(inicial);
+        setTocados({});
+        setEnviado(false);
+      } catch (error) {
+        setErrorServidor(error.message || "No se pudo crear la cuenta.");
+      } finally {
+        setCargando(false);
+      }
+      return;
+    }
+    // El registro original también es simulado; no se guardan credenciales.
+    onRegistered(cuenta);
     setDatos(inicial);
     setTocados({});
     setEnviado(false);
@@ -131,14 +153,30 @@ export default function RegistroForm({
         </p>
       )}
       <p className="nota-demo">
-        Registro de demostración. No crea una cuenta en un servidor.
+        {apiMode
+          ? "Se enviarán los datos de cuenta al servidor Nexus."
+          : "Registro de demostración. No crea una cuenta en un servidor."}
       </p>
-      <button className="boton boton-primario boton-bloque" type="submit">
-        Crear cuenta
+      {errorServidor && (
+        <p className="mensaje-formulario error" role="alert">
+          {errorServidor}
+        </p>
+      )}
+      <button
+        className="boton boton-primario boton-bloque"
+        type="submit"
+        disabled={cargando}
+      >
+        {cargando ? "Creando cuenta…" : "Crear cuenta"}
       </button>
       <p className="pequeno atenuado centrado texto-cambio-formulario">
         ¿Ya tienes una cuenta?{" "}
-        <button className="enlace-cambio" type="button" onClick={onShowLogin}>
+        <button
+          className="enlace-cambio"
+          type="button"
+          onClick={onShowLogin}
+          disabled={cargando}
+        >
           Inicia sesión
         </button>
       </p>

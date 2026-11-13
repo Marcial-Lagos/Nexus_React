@@ -9,6 +9,9 @@ export default function Producto({
   onAdd,
   categorias = [],
   productos = catalogoInicial,
+  apiMode = false,
+  cargando = false,
+  errorApi = "",
 }) {
   const [parametros] = useSearchParams();
   const nombre = parametros.get("producto");
@@ -21,11 +24,19 @@ export default function Producto({
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
   const limite = Math.min(99, producto?.stock ?? 99);
+  if (!producto && cargando)
+    return (
+      <main className="pagina-producto">
+        <p role="status">Cargando producto del servidor…</p>
+        {errorApi && <p role="alert">{errorApi}</p>}
+      </main>
+    );
   if (!producto)
     return (
       <main className="pagina-producto">
         <h1>Producto no encontrado</h1>
         <p>El producto solicitado no está en el catálogo de Nexus.</p>
+        {errorApi && <p role="alert">{errorApi}</p>}
         <Link className="boton boton-primario" to="/tienda">
           Volver a la tienda
         </Link>
@@ -41,6 +52,7 @@ export default function Producto({
         <span>{producto.nombre}</span>
       </nav>
       <section className="detalle-producto">
+        {errorApi && <p role="alert">{errorApi}</p>}
         <div className="zona-imagen-producto">
           <div className={`imagen-producto-grande vista-${vista}`}>
             <ImagenProducto producto={producto} />
@@ -85,7 +97,11 @@ export default function Producto({
               {precioCLP(precioVenta(producto))}
             </p>
             <span className="producto-disponible">
-              {producto.stock === 0 ? "Sin stock" : "En stock · demo"}
+              {producto.stock === 0
+                ? "Sin stock"
+                : apiMode
+                  ? "En stock"
+                  : "En stock · demo"}
             </span>
           </div>
           <p className="descripcion-producto">
@@ -145,8 +161,9 @@ export default function Producto({
             </p>
           )}
           <p className="nota-demo">
-            Catálogo de demostración: las condiciones comerciales siguientes son
-            contenido del prototipo; los pagos y pedidos son simulados.
+            {apiMode
+              ? "Precio y disponibilidad recibidos del servidor. La ficha y las condiciones comerciales restantes son contenido del prototipo."
+              : "Catálogo de demostración: las condiciones comerciales siguientes son contenido del prototipo; los pagos y pedidos son simulados."}
           </p>
           <div className="beneficios-producto">
             {[

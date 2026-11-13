@@ -32,14 +32,40 @@ import {
 } from "./data/administracion.js";
 
 import { precioVenta } from "./data/catalogo.js";
+import {
+  actualizarPerfil,
+  apiConfigured,
+  clearAccessToken,
+  crearPedidoApi,
+  obtenerPedidos,
+  obtenerPerfil,
+  obtenerProducto,
+  obtenerProductos,
+  registrarUsuarioApi,
+  iniciarSesionApi,
+  usuarioDesdeToken,
+} from "./api/client.js";
 
 export default function App() {
+  const apiMode = apiConfigured();
   const [usuario, setUsuario] = useState(() => {
+    const autenticado = usuarioDesdeToken();
+    if (autenticado) return autenticado;
     const sesion = leerSesion();
+    if (apiMode && sesion?.autenticadoApi) return null;
     return sesion ? { ...sesion, id: sesion.id || crypto.randomUUID() } : null;
   });
   const [administracion, setAdministracion] = useState(leerAdministracion);
   const [avisoAdmin, setAvisoAdmin] = useState("");
+  const [productosApi, setProductosApi] = useState([]);
+  const [cargandoProductos, setCargandoProductos] = useState(apiMode);
+  const [errorProductos, setErrorProductos] = useState("");
+  const [productoDetalleApi, setProductoDetalleApi] = useState(null);
+  const [errorDetalleApi, setErrorDetalleApi] = useState(null);
+  const [pedidosApi, setPedidosApi] = useState([]);
+  const [idPerfilCargado, setIdPerfilCargado] = useState("");
+  const [errorPerfil, setErrorPerfil] = useState("");
+  const [errorPedidos, setErrorPedidos] = useState("");
   function actualizarDatos(nuevos) {
     const persistido = guardarAdministracion(nuevos);
     setAdministracion(nuevos);
@@ -53,9 +79,109 @@ export default function App() {
   const [menu, setMenu] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const ubicacion = useLocation();
+  const productoSeleccionado =
+    new URLSearchParams(ubicacion.search).get("producto");
+  const detalleVisible =
+    ubicacion.pathname === "/producto" &&
+    productoDetalleApi?.id === productoSeleccionado
+      ? productoDetalleApi
+      : null;
+  const productos = apiMode
+    ? productosApi.map((producto) =>
+        producto.id === detalleVisible?.id ? detalleVisible : producto,
+      )
+    : administracion.productos;
+  const cargandoPerfil = Boolean(
+    apiMode &&
+      usuario?.id &&
+      !usuario.invitado &&
+      idPerfilCargado !== usuario.id,
+  );
+  const errorDetalleVisible =
+    errorDetalleApi?.id === productoSeleccionado
+      ? errorDetalleApi.message
+      : "";
+  const categorias = apiMode
+    ? [...new Set(productosApi.map((producto) => producto.categoria).filter(Boolean))].map(
+        (id) => ({ id, nombre: id }),
+      )
+    : administracion.categorias;
+
   useEffect(() => {
     guardarSesion(usuario);
   }, [usuario]);
+  useEffect(() => {
+    if (!apiMode) return undefined;
+    const controller = new AbortController();
+    obtenerProductos({ signal: controller.signal })
+      .then((catalogo) => {
+        setProductosApi(catalogo);
+        setErrorProductos("");
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError") setErrorProductos(error.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setCargandoProductos(false);
+      });
+    return () => controller.abort();
+  }, [apiMode]);
+  useEffect(() => {
+    if (!apiMode || ubicacion.pathname !== "/producto") return undefined;
+    const producto = productosApi.find(
+      (item) => item.id === productoSeleccionado,
+    );
+    if (!producto) return undefined;
+    const controller = new AbortController();
+    obtenerProducto(producto.id, { signal: controller.signal })
+      .then((detalle) => {
+        setProductoDetalleApi(detalle);
+        setErrorDetalleApi(null);
+      })
+      .catch((error) => {
+        if (error.name !== "AbortError")
+          setErrorDetalleApi({ id: producto.id, message: error.message });
+      });
+    return () => controller.abort();
+  }, [apiMode, ubicacion.pathname, productoSeleccionado, productosApi]);
+  useEffect(() => {
+    if (!apiMode || !usuario?.id || usuario.invitado) return undefined;
+    const controller = new AbortController();
+    Promise.allSettled([
+      obtenerPerfil(usuario.id, { signal: controller.signal }),
+      obtenerPedidos(usuario.id, { signal: controller.signal }),
+    ]).then(([perfil, pedidos]) => {
+      if (controller.signal.aborted) return;
+      if (perfil.status === "fulfilled") {
+        setErrorPerfil("");
+        setUsuario((actual) => ({
+          ...actual,
+          nombre: perfil.value.nombre || actual.nombre,
+          correo: perfil.value.correo || actual.correo,
+          biografia: perfil.value.biografia || actual.biografia,
+        }));
+      } else {
+        setErrorPerfil(perfil.reason.message);
+      }
+      if (pedidos.status === "fulfilled") {
+        setErrorPedidos("");
+        setPedidosApi(pedidos.value);
+      } else {
+        setErrorPedidos(pedidos.reason.message);
+      }
+      setIdPerfilCargado(usuario.id);
+    });
+    return () => controller.abort();
+  }, [apiMode, usuario?.id, usuario?.invitado]);
+  useEffect(() => {
+    function cerrarSesionExpirada() {
+      setUsuario(null);
+      setCarrito([]);
+    }
+    window.addEventListener("nexus:session-expired", cerrarSesionExpirada);
+    return () =>
+      window.removeEventListener("nexus:session-expired", cerrarSesionExpirada);
+  }, []);
   function iniciarSesion(datos) {
     setUsuario({
       id: crypto.randomUUID(),
@@ -65,6 +191,15 @@ export default function App() {
       rol: esAdmin(datos) ? "admin" : "cliente",
       biografia: biografiaOriginal,
     });
+  }
+  async function autenticar(datos) {
+    const autenticado = await iniciarSesionApi(datos.correo, datos.contrasena);
+    setUsuario(autenticado);
+  }
+  async function registrar(datos) {
+    const resultado = await registrarUsuarioApi(datos);
+    if (resultado.autenticado) setUsuario(resultado.usuario);
+    return resultado;
   }
   function invitado() {
     setUsuario({
@@ -77,12 +212,40 @@ export default function App() {
     });
   }
   function salir() {
+    clearAccessToken();
     setUsuario(null);
     setCarrito([]);
     setMenu(false);
     setBusqueda("");
   }
   function confirmarCompra(entrega, pago, id) {
+    if (apiMode) {
+      return (async () => {
+        if (!usuario?.id || usuario.invitado)
+          throw new Error("Inicia sesión con una cuenta del servidor para crear un pedido.");
+        if (Object.keys(validarEntrega(entrega)).length)
+          throw new Error("Revisa los datos de entrega.");
+        if (pago === "rechazado")
+          throw new Error("Los pagos reales no están conectados; no se envió el pedido.");
+        const pedido = await crearPedidoApi(usuario.id, carrito);
+        if (!pedido.id)
+          throw new Error(
+            "El servidor recibió la solicitud, pero no devolvió el identificador del pedido. Revisa tu historial antes de volver a intentarlo.",
+          );
+        setPedidosApi((actuales) => [
+          pedido,
+          ...actuales.filter((existente) => existente.id !== pedido.id),
+        ]);
+        setCarrito([]);
+        obtenerPedidos(usuario.id)
+          .then(setPedidosApi)
+          .catch((error) => setErrorPedidos(error.message));
+        obtenerProductos()
+          .then(setProductosApi)
+          .catch((error) => setErrorProductos(error.message));
+        return { pedido, remoto: true };
+      })();
+    }
     const actuales = leerAdministracion();
     if (Object.keys(validarEntrega(entrega)).length)
       throw new Error("Revisa los datos de entrega.");
@@ -112,7 +275,7 @@ export default function App() {
     setAdministracion(nuevos);
   }
   function agregar(producto, cantidad) {
-    const actual = administracion.productos.find((p) => p.id === producto.id);
+    const actual = productos.find((p) => p.id === producto.id);
     const acumulado =
       (carrito.find((p) => p.id === producto.id)?.cantidad || 0) + cantidad;
     if (
@@ -143,7 +306,7 @@ export default function App() {
   }
   function cambiarCantidad(id, diferencia) {
     const stock =
-      administracion.productos.find((producto) => producto.id === id)?.stock ?? 0;
+      productos.find((producto) => producto.id === id)?.stock ?? 0;
     setCarrito((actual) =>
       actual.map((item) => {
         if (item.id !== id) return item;
@@ -199,7 +362,11 @@ export default function App() {
               onChangeEstado={actualizarPedido}
               usuario={usuario}
               datos={administracion}
-              aviso={avisoAdmin}
+              aviso={
+                apiMode
+                  ? "El panel sigue siendo una demostración local. El backend no expone autorización de administrador; estos cambios no tienen efecto en el servidor."
+                  : avisoAdmin
+              }
               onLogout={salir}
               onSave={(tipo, registro) =>
                 actualizarDatos(
@@ -298,9 +465,10 @@ export default function App() {
           element={proteger(
             <Checkout
               usuario={usuario}
-              datos={administracion}
+              datos={{ ...administracion, productos }}
               carrito={carrito}
               onConfirm={confirmarCompra}
+              apiMode={apiMode}
             />,
           )}
         />
@@ -309,7 +477,9 @@ export default function App() {
           element={proteger(
             <ResultadoCompra
               usuario={usuario}
-              ordenes={administracion.ordenes}
+              ordenes={apiMode ? pedidosApi : administracion.ordenes}
+              apiMode={apiMode}
+              cargando={cargandoPerfil}
             />,
           )}
         />
@@ -322,7 +492,13 @@ export default function App() {
                 replace
               />
             ) : (
-              <Login onLogin={iniciarSesion} onGuest={invitado} />
+              <Login
+                onLogin={iniciarSesion}
+                onGuest={invitado}
+                onAuthenticate={apiMode ? autenticar : undefined}
+                onRegister={apiMode ? registrar : undefined}
+                apiMode={apiMode}
+              />
             )
           }
         />
@@ -335,7 +511,13 @@ export default function App() {
                 replace
               />
             ) : (
-              <Login onLogin={iniciarSesion} onGuest={invitado} />
+              <Login
+                onLogin={iniciarSesion}
+                onGuest={invitado}
+                onAuthenticate={apiMode ? autenticar : undefined}
+                onRegister={apiMode ? registrar : undefined}
+                apiMode={apiMode}
+              />
             )
           }
         />
@@ -361,9 +543,25 @@ export default function App() {
             usuario && (
               <Perfil
                 usuario={usuario}
-                onUpdate={(cambios) =>
-                  setUsuario((actual) => ({ ...actual, ...cambios }))
-                }
+                apiMode={apiMode}
+                cargando={cargandoPerfil}
+                error={errorPerfil}
+                pedidos={pedidosApi}
+                errorPedidos={errorPedidos}
+                onUpdate={async (cambios) => {
+                  if (apiMode) {
+                    if (!usuario?.id || usuario.invitado)
+                      throw new Error("No se pudo identificar la cuenta del servidor.");
+                    const perfil = await actualizarPerfil(usuario.id, cambios, usuario);
+                    setUsuario((actual) => ({
+                      ...actual,
+                      nombre: perfil.nombre || cambios.nombre,
+                      biografia: cambios.biografia,
+                    }));
+                  } else {
+                    setUsuario((actual) => ({ ...actual, ...cambios }));
+                  }
+                }}
               />
             ),
           )}
@@ -372,8 +570,11 @@ export default function App() {
           path="/tienda"
           element={proteger(
             <Tienda
-              categorias={administracion.categorias}
-              productos={administracion.productos}
+              categorias={categorias}
+              productos={productos}
+              apiMode={apiMode}
+              cargando={cargandoProductos}
+              error={errorProductos}
               carrito={carrito}
               onChangeQuantity={cambiarCantidad}
               onRemove={(id) =>
@@ -387,8 +588,11 @@ export default function App() {
           path="/producto"
           element={proteger(
             <Producto
-              categorias={administracion.categorias}
-              productos={administracion.productos}
+              categorias={categorias}
+              productos={productos}
+              cargando={cargandoProductos}
+              errorApi={errorProductos || errorDetalleVisible}
+              apiMode={apiMode}
               key={ubicacion.search}
               onAdd={agregar}
             />,

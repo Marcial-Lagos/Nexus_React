@@ -4,12 +4,22 @@ import LoginForm from "../components/LoginForm.jsx";
 import RegistroForm from "../components/RegistroForm.jsx";
 import Footer from "../components/Footer.jsx";
 
-export default function Login({ onLogin, onGuest }) {
+export default function Login({
+  onLogin,
+  onGuest,
+  onAuthenticate,
+  onRegister,
+  apiMode = false,
+}) {
   const [registro, setRegistro] = useState(false);
   const [cuenta, setCuenta] = useState(null);
   function registrado(datos) {
     setCuenta(datos);
     setRegistro(false);
+  }
+  async function registrar(datos) {
+    if (!onRegister) return undefined;
+    return onRegister(datos);
   }
   return (
     <main className="cuerpo-inicio-sesion diseno-inicio-sesion">
@@ -44,9 +54,15 @@ export default function Login({ onLogin, onGuest }) {
               correoInicial={cuenta?.correo}
               aviso={
                 cuenta
-                  ? "Cuenta validada correctamente en modo demostración. Ya puedes iniciar sesión."
+                  ? cuenta.servidor
+                    ? cuenta.autenticado
+                      ? "Cuenta creada y sesión iniciada."
+                      : "Cuenta creada en el servidor. Ya puedes iniciar sesión."
+                    : "Cuenta validada correctamente en modo demostración. Ya puedes iniciar sesión."
                   : ""
               }
+              apiMode={apiMode}
+              onAuthenticate={onAuthenticate}
               onLogin={(datos) =>
                 onLogin({
                   ...datos,
@@ -62,6 +78,8 @@ export default function Login({ onLogin, onGuest }) {
             <RegistroForm
               activo={registro}
               onRegistered={registrado}
+              onRegister={onRegister ? registrar : undefined}
+              apiMode={apiMode}
               onShowLogin={() => setRegistro(false)}
             />
           </div>

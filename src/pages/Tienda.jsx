@@ -11,6 +11,9 @@ export default function Tienda({
   onChangeQuantity,
   onRemove,
   onEmpty,
+  apiMode = false,
+  cargando = false,
+  error = "",
 }) {
   const [parametros, setParametros] = useSearchParams();
   const visibles = filtrarCatalogo(productos, parametros);
@@ -32,6 +35,12 @@ export default function Tienda({
   return (
     <main className="pagina-tienda contenedor-contenido">
       <h1 className="titulo-tienda">Tienda Nexus</h1>
+      {error && (
+        <p className="alert alert-danger" role="alert">
+          No se pudo cargar el catálogo: {error}
+        </p>
+      )}
+      {cargando && <p role="status">Cargando catálogo del servidor…</p>}
       <section className="tarjeta-panel mb-4" aria-label="Filtros de productos">
         <div className="row g-3">
           <div className="col-12 col-md-6">
@@ -110,7 +119,7 @@ export default function Tienda({
         </div>
       </section>
       <p role="status">{visibles.length} productos encontrados</p>
-      {!visibles.length && (
+      {!visibles.length && !cargando && (
         <p>No hay productos que coincidan con los filtros.</p>
       )}
       <div className="contenedor-productos">
@@ -134,7 +143,7 @@ export default function Tienda({
             </p>
             <Link
               className="boton boton-primario"
-              to={`/producto?producto=${encodeURIComponent(producto.nombre)}`}
+              to={`/producto?producto=${encodeURIComponent(apiMode ? producto.id : producto.nombre)}`}
               aria-label={`Comprar ${producto.nombre}`}
             >
               Comprar
@@ -147,7 +156,11 @@ export default function Tienda({
         aria-label="Carrito de demostración"
       >
         <h2>Tu carrito</h2>
-        <p>Demostración local. Los pedidos y pagos son simulados.</p>
+        <p>
+          {apiMode
+            ? "El carrito se conserva localmente hasta que el servidor confirme el pedido. Los pagos no están conectados."
+            : "Demostración local. Los pedidos y pagos son simulados."}
+        </p>
         {carrito.length === 0 ? (
           <p>Tu carrito está vacío.</p>
         ) : (
@@ -155,7 +168,9 @@ export default function Tienda({
             <ul className="lista-carrito">
               {carrito.map((item) => (
                 <li key={item.id}>
-                  <span>{item.nombre}</span>
+                  <span>
+                    {item.nombre} × {item.cantidad}
+                  </span>
                   <div className="d-flex align-items-center gap-2">
                     <button
                       type="button"
@@ -166,7 +181,6 @@ export default function Tienda({
                     >
                       −
                     </button>
-                    <strong>{item.cantidad}</strong>
                     <button
                       type="button"
                       className="boton boton-suave"
