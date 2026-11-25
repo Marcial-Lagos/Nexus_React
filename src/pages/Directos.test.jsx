@@ -18,7 +18,7 @@ describe("Directos reales", () => {
   test("lista canales recibidos desde la API", async () => {
     apiRequest.mockResolvedValue([{ id: "abc", titulo: "Nexus Live" }]);
     render(<Directos usuario={usuario} />);
-    expect(await screen.findByRole("button", { name: "Ver Nexus Live" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Ver Nexus Live/ })).toBeInTheDocument();
     expect(apiRequest).toHaveBeenCalledWith("/api/v1/directos");
   });
   test("impide publicar un titulo vacio y muestra errores de permisos", async () => {

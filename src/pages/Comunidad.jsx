@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import BarraServidores from "../components/BarraServidores.jsx";
+import SalaVoz from "../components/SalaVoz.jsx";
 
 const mensajesIniciales = [
   {
@@ -42,6 +43,7 @@ export default function Comunidad({ usuario, cantidadCarrito = 0 }) {
   const [parametros, setParametros] = useSearchParams();
   const solicitado = parametros.get("canal");
   const canal = canales.includes(solicitado) ? solicitado : "general";
+  const vozReal = usuario.autenticadoApi && (canal === "Sala general" || canal === "Ranked");
   const [mensajes, setMensajes] = useState({ general: mensajesIniciales });
   const [texto, setTexto] = useState("");
   const [busqueda, setBusqueda] = useState("");
@@ -60,7 +62,7 @@ export default function Comunidad({ usuario, cantidadCarrito = 0 }) {
     setBusqueda("");
     setMenu(false);
     setAviso(
-      nombre === "Sala general" || nombre === "Ranked"
+      !usuario.autenticadoApi && (nombre === "Sala general" || nombre === "Ranked")
         ? "Sala de voz de demostración. No se transmite audio."
         : "",
     );
@@ -158,7 +160,7 @@ export default function Comunidad({ usuario, cantidadCarrito = 0 }) {
             <button
               aria-label="Llamada de voz"
               onClick={() =>
-                setAviso("Llamada de demostración. No se transmite audio.")
+                usuario.autenticadoApi ? cambiarCanal("Sala general") : setAviso("Llamada de demostración. No se transmite audio.")
               }
             >
               ☏
@@ -179,6 +181,7 @@ export default function Comunidad({ usuario, cantidadCarrito = 0 }) {
             </button>
           </div>
         </header>
+        {vozReal && <SalaVoz key={canal} sala={canal === "Ranked" ? "ranked" : "general"} usuario={usuario} />}
         {buscar && (
           <input
             className="busqueda-chat"
@@ -272,7 +275,7 @@ export default function Comunidad({ usuario, cantidadCarrito = 0 }) {
           </button>
         </form>
       </main>
-      {miembros && (
+      {miembros && !vozReal && (
         <aside className="barra-lateral-miembros">
           <p className="encabezado-lateral">EN LÍNEA — 4</p>
           {[
