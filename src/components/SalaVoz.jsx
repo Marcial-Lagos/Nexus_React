@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import { apiRequest } from "../api/client.js";
 import { servidoresIce } from "../utils/directos.js";
 import { consultarVoz } from "../utils/voz.js";
+import { ControlesVoz } from "./VozInterfaz.jsx";
 const pausa = ms => new Promise(r => setTimeout(r, ms));
 
 function AudioRemoto({ stream, silencio }) {
@@ -10,7 +11,7 @@ function AudioRemoto({ stream, silencio }) {
   return <audio ref={ref} autoPlay controls muted={silencio} aria-label="Audio de participante" />;
 }
 
-export default function SalaVoz({ sala, usuario }) {
+export default function SalaVoz({ sala, usuario, ref, onEstado, compacta=false }) {
   const sesion = useRef(null);
   const [estado, setEstado] = useState("");
   const [error, setError] = useState("");
@@ -19,6 +20,9 @@ export default function SalaVoz({ sala, usuario }) {
   const [micro, setMicro] = useState(true);
   const [auriculares, setAuriculares] = useState(true);
   const ruta = "/api/v1/voz/" + sala;
+  const control=useRef(null);
+  const info={sala,estado,miembros,micro,auriculares,error};
+  useEffect(()=>{onEstado?.({sala,estado,miembros,micro,auriculares,error});},[onEstado,sala,estado,miembros,micro,auriculares,error]);
 
   function cerrar(s) {
     if (!s || s.fin) return;
@@ -100,19 +104,19 @@ export default function SalaVoz({ sala, usuario }) {
       }
     }catch(e){if(!s.fin){salir();setError(e.message);}}
   }
-  return <section className="p-3 border rounded m-3" aria-label="Sala de voz">
-    <h2 className="h5">Voz en comunidad</h2>
-    <p>{estado || "Conecta tu microfono para conversar en esta sala."}</p>
-    {!estado ? <button className="btn btn-primary" onClick={entrar}>Conectar voz</button> : <>
-      <button className="btn btn-outline-info me-2" disabled={estado!=="Conectado"} onClick={()=>{
-        const t=sesion.current?.stream?.getAudioTracks()[0];if(t){t.enabled=!t.enabled;setMicro(t.enabled);}
-      }}>{micro?"Silenciar microfono":"Activar microfono"}</button>
-      <button className="btn btn-outline-info me-2" onClick={()=>setAuriculares(x=>!x)}>{auriculares?"Silenciar auriculares":"Activar auriculares"}</button>
-      <button className="btn btn-danger" onClick={salir}>Desconectar voz</button>
-      <p className="mt-3">{miembros.length} participantes</p>
-      <ul>{miembros.map(m=><li key={m.id}>{m.nombre} — {m.silencio?"Silenciado":m.hablando?"Hablando":"Conectado"}</li>)}</ul>
-      {Object.entries(remotos).map(([id,stream])=><AudioRemoto key={id} stream={stream} silencio={!auriculares}/>)}
+  function alternarMicro(){
+    const t=sesion.current?.stream?.getAudioTracks()[0];if(t){t.enabled=!t.enabled;setMicro(t.enabled);}
+  }
+  function alternarAudio(){setAuriculares(x=>!x);}
+  useImperativeHandle(ref,()=>({entrar,salir,alternarMicro,alternarAudio}));
+  useImperativeHandle(control,()=>({entrar,salir,alternarMicro,alternarAudio}));
+  return <section className="nx-voice-dock" aria-label="Sala de voz">
+    <div><div className={"nx-voice-dock-title"+(!estado?" idle":"")}><i className={"bi bi-"+(estado?"reception-4":"headphones")}/>{estado==="Conectado"?"Voz conectada":estado||"Canal de voz"}</div><small>{sala==="ranked"?"Ranked":"Sala general"} · Gaming Chile</small></div>
+    {!estado?<button className="nx-voice-join" onClick={entrar}><i className="bi bi-telephone-fill" aria-hidden="true"/>Conectar voz</button>:<>
+      <ControlesVoz info={info} control={control} compacto/>
+      {!compacta&&<p>{miembros.length} participantes</p>}
+      {Object.keys(remotos).length>0&&<details className="nx-voice-audios"><summary>Ajustes de audio y reproducción</summary>{Object.entries(remotos).map(([id,stream])=><AudioRemoto key={id} stream={stream} silencio={!auriculares}/>)}</details>}
     </>}
-    {error && <p role="alert">{error}</p>}
+    {error&&<p className="nx-voice-error" role="alert">{error}</p>}
   </section>;
 }

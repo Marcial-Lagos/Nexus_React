@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router";
 import BarraServidores from "../components/BarraServidores.jsx";
 import SalaVoz from "../components/SalaVoz.jsx";
 import ChatDirecto from "../components/ChatDirecto.jsx";
+import { salasVoz,useSalasVoz,ArbolVoz,EscenarioVoz,ControlesVoz } from "../components/VozInterfaz.jsx";
 
 const mensajesIniciales = [
   {
@@ -44,7 +45,14 @@ export default function Comunidad({ usuario, cantidadCarrito = 0 }) {
   const [parametros, setParametros] = useSearchParams();
   const solicitado = parametros.get("canal");
   const canal = canales.includes(solicitado) ? solicitado : "general";
-  const vozReal = usuario.autenticadoApi && (canal === "Sala general" || canal === "Ranked");
+  const vozReal = Boolean(usuario.autenticadoApi && salasVoz[canal]);
+  const [salaActiva,setSalaActiva]=useState(vozReal?salasVoz[canal]:null);
+  const [infoVoz,setInfoVoz]=useState(null);
+  const controlVoz=useRef(null);
+  const salas=useSalasVoz(usuario.autenticadoApi);
+  useEffect(()=>{if(vozReal)setSalaActiva(salasVoz[canal]);},[vozReal,canal]);
+  const info=infoVoz?.sala===salaActiva?infoVoz:null;
+  const participantes=s=>info?.sala===s&&info.estado==="Conectado"?info.miembros:(salas?.[s]??null);
   const [mensajes, setMensajes] = useState({ general: mensajesIniciales });
   const [texto, setTexto] = useState("");
   const [busqueda, setBusqueda] = useState("");
@@ -59,6 +67,7 @@ export default function Comunidad({ usuario, cantidadCarrito = 0 }) {
   }, [mensajes, canal]);
   function cambiarCanal(nombre) {
     setParametros({ canal: nombre });
+    if(usuario.autenticadoApi&&salasVoz[nombre])setSalaActiva(salasVoz[nombre]);
     setTexto("");
     setBusqueda("");
     setMenu(false);
@@ -92,7 +101,7 @@ export default function Comunidad({ usuario, cantidadCarrito = 0 }) {
       .includes(busqueda.toLocaleLowerCase("es")),
   );
   return (
-    <div className={`cuerpo-comunidad${miembros && !usuario.autenticadoApi ? "" : " sin-miembros"}`}>
+    <div className={`cuerpo-comunidad${miembros && !usuario.autenticadoApi ? "" : " sin-miembros"}${usuario.autenticadoApi?" nx-voice-community":""}`}>
       <BarraServidores cantidadCarrito={cantidadCarrito} />
       <aside className={`barra-lateral-canales${menu ? " abierto" : ""}`}>
         <div className="titulo-comunidad">
@@ -118,15 +127,17 @@ export default function Comunidad({ usuario, cantidadCarrito = 0 }) {
                 <p className="encabezado-lateral">CANALES DE TEXTO</p>
               )}
               {i === 7 && <p className="encabezado-lateral">VOZ</p>}
+              {usuario.autenticadoApi&&i>=7?<><button className={`elemento-canal nx-voice-room${canal===nombre?" activo":""}`} onClick={()=>cambiarCanal(nombre)}><i className="bi bi-volume-up-fill" aria-hidden="true"/>{nombre}<span className="nx-voice-room-count">{participantes(salasVoz[nombre])?.length??"–"}/6</span></button><ArbolVoz sala={nombre} miembros={participantes(salasVoz[nombre])} conectado={Boolean(info?.estado&&info.sala===salasVoz[nombre])} usuario={usuario}/></>:
               <button
                 className={`elemento-canal${canal === nombre ? " activo" : ""}`}
                 onClick={() => cambiarCanal(nombre)}
               >
                 {i >= 7 ? "🔊" : "#"} {nombre}
-              </button>
+              </button>}
             </div>
           ))}
         </nav>
+        {usuario.autenticadoApi&&salaActiva&&<SalaVoz key={salaActiva} sala={salaActiva} usuario={usuario} ref={controlVoz} onEstado={setInfoVoz} compacta/>}
         <div className="perfil-mini">
           <span className="avatar avatar-verde">
             {usuario.nombre.slice(0, 2).toUpperCase()}
@@ -151,7 +162,7 @@ export default function Comunidad({ usuario, cantidadCarrito = 0 }) {
             ☰
           </button>
           <div>
-            <strong># {canal}</strong>
+            <strong>{vozReal?<i className="bi bi-volume-up-fill me-2"/>:"# "}{canal}</strong>
             <span>
               Conversación{" "}
               {canal === "general" ? "general de la comunidad" : "del canal"}
@@ -182,7 +193,8 @@ export default function Comunidad({ usuario, cantidadCarrito = 0 }) {
             </button>
           </div>
         </header>
-        {vozReal && <SalaVoz key={canal} sala={canal === "Ranked" ? "ranked" : "general"} usuario={usuario} />}
+        {vozReal&&<EscenarioVoz nombre={canal} participantes={participantes(salasVoz[canal])} info={info?.sala===salasVoz[canal]?info:null} control={controlVoz} usuario={usuario}/>}
+        {!vozReal&&info?.estado&&<div className="nx-voice-mobile-dock"><span><i className="bi bi-reception-4"/> {info.estado} · {salaActiva==="ranked"?"Ranked":"Sala general"}</span><ControlesVoz info={info} control={controlVoz} compacto/></div>}
         {buscar && (
           <input
             className="busqueda-chat"
