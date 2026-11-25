@@ -1,4 +1,6 @@
-import { Link, NavLink, Navigate, Route, Routes } from "react-router";
+import { Navigate, Route, Routes } from "react-router";
+import AdminLayout from "../components/AdminLayout.jsx";
+import AdminDashboard from "../components/AdminDashboard.jsx";
 import AdminOrdenes from "../components/AdminOrdenes.jsx";
 import AdminColeccion from "../components/AdminColeccion.jsx";
 import { esAdmin } from "../data/administracion.js";
@@ -14,82 +16,10 @@ export default function Admin({
 }) {
   if (!esAdmin(usuario)) return <Navigate to="/admin/login" replace />;
   const criticos = datos.productos.filter((p) => p.stock <= 5);
-  const resumen = (
-    <section>
-      <h2>Resumen del negocio</h2>
-      <div className="row g-3 mb-4">
-        {[
-          ["Productos", datos.productos.length],
-          ["Categorías", datos.categorias.length],
-          ["Clientes", datos.usuarios.length],
-          ["Órdenes", datos.ordenes.length],
-        ].map(([titulo, valor]) => (
-          <div className="col-6 col-lg-3" key={titulo}>
-            <div className="border rounded p-3">
-              <h3 className="h6">{titulo}</h3>
-              <strong className="fs-3">{valor}</strong>
-            </div>
-          </div>
-        ))}
-      </div>
-      <h3>Productos con stock crítico</h3>
-      {criticos.length ? (
-        <ul>
-          {criticos.map((p) => (
-            <li key={p.id}>
-              {p.nombre}: {p.stock} unidades
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p>No hay productos con stock crítico (5 unidades o menos).</p>
-      )}
-    </section>
-  );
+  const resumen = <AdminDashboard datos={datos} demo />;
   return (
-    <main className="container py-4">
-      <header className="d-flex justify-content-between gap-3 flex-wrap mb-4">
-        <div>
-          <p className="text-info">NEXUS / ADMINISTRACIÓN</p>
-          <h1>Panel de administración</h1>
-        </div>
-        <div>
-          <Link className="btn btn-outline-info me-2" to="/tienda">
-            Ver tienda
-          </Link>
-          <button className="btn btn-outline-light" onClick={onLogout}>
-            Cerrar sesión de administrador
-          </button>
-        </div>
-      </header>
-      <p>
-        Datos de demostración guardados en este navegador. No se procesan pagos
-        ni se crean cuentas reales.
-      </p>
+    <AdminLayout title="Panel de administración" links={[["/admin","Resumen"],["/admin/productos","Productos"],["/admin/categorias","Categorías"],["/admin/usuarios","Usuarios"],["/admin/ordenes","Órdenes"],["/admin/reportes","Reportes"],["/admin/perfil","Perfil"]]} onLogout={onLogout} logoutLabel="Cerrar sesión de administrador" demo>
       {aviso && <p role="alert">{aviso}</p>}
-      <nav
-        className="nav nav-pills gap-2 flex-wrap mb-4"
-        aria-label="Administración"
-      >
-        {[
-          ["", "Resumen"],
-          ["productos", "Productos"],
-          ["categorias", "Categorías"],
-          ["usuarios", "Usuarios"],
-          ["ordenes", "Órdenes"],
-          ["reportes", "Reportes"],
-          ["perfil", "Perfil"],
-        ].map(([ruta, etiqueta]) => (
-          <NavLink
-            end
-            key={ruta}
-            className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
-            to={`/admin${ruta ? "/" + ruta : ""}`}
-          >
-            {etiqueta}
-          </NavLink>
-        ))}
-      </nav>
       <Routes>
         <Route index element={resumen} />
         {["productos", "categorias", "usuarios"].map((tipo) => (
@@ -155,6 +85,6 @@ export default function Admin({
         />
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
-    </main>
+    </AdminLayout>
   );
 }

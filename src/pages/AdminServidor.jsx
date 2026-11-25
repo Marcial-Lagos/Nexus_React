@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link, NavLink, useParams } from "react-router";
+import { useParams } from "react-router";
+import AdminLayout from "../components/AdminLayout.jsx";
+import AdminDashboard from "../components/AdminDashboard.jsx";
 import {
   API_PATHS,
   apiRequest,
@@ -53,6 +55,9 @@ export default function AdminServidor({ onLogout }) {
   const { "*": ruta } = useParams();
   const seccion = secciones.includes(ruta) ? ruta : "resumen";
   const [datos, setDatos] = useState(null);
+  const [busqueda,setBusqueda]=useState("");
+  const [filtro,setFiltro]=useState("");
+  const coincide=(...valores)=>valores.join(" ").toLocaleLowerCase("es").includes(busqueda.toLocaleLowerCase("es"));
   const [edicion, setEdicion] = useState(null);
   const [quitar, setQuitar] = useState("");
   const [ocupado, setOcupado] = useState(false);
@@ -107,6 +112,10 @@ export default function AdminServidor({ onLogout }) {
   const categorias = [
     ...new Set(datos?.productos.map((p) => p.categoria).filter(Boolean)),
   ].sort();
+  const productosVisibles=(datos?.productos||[]).filter(p=>coincide(p.nombre,p.categoria)&&(!filtro||p.categoria===filtro));
+  const usuariosVisibles=(datos?.usuarios||[]).filter(u=>coincide(u.nombre,u.email,u.correo));
+  const ordenesVisibles=(datos?.ordenes||[]).filter(o=>coincide(o.id,o.cliente?.nombre,o.cliente?.correo)&&(!filtro||o.estado===filtro));
+  useEffect(()=>{setBusqueda("");setFiltro("");},[seccion]);
   function campo(nombre, etiqueta, tipo = "text", requerido = true) {
     return (
       <label className="d-block mb-2" key={nombre}>
@@ -125,29 +134,7 @@ export default function AdminServidor({ onLogout }) {
     );
   }
   return (
-    <main className="container py-4">
-      <header className="d-flex justify-content-between align-items-center flex-wrap">
-        <h1>Administración de Nexus</h1>
-        <div>
-          <Link to="/tienda" className="btn btn-outline-info me-2">
-            Ver tienda
-          </Link>
-          <button onClick={onLogout} className="btn btn-outline-secondary">
-            Cerrar sesión
-          </button>
-        </div>
-      </header>
-      <nav className="nav nav-pills my-4 gap-2" aria-label="Administración">
-        {secciones.map((s, i) => (
-          <NavLink
-            key={s}
-            className={"nav-link" + (seccion === s ? " active" : "")}
-            to={s === "resumen" ? "/admin" : "/admin/" + s}
-          >
-            {titulos[i]}
-          </NavLink>
-        ))}
-      </nav>
+    <AdminLayout title="Administración de Nexus" links={secciones.map((s,i)=>[s==="resumen"?"/admin":"/admin/"+s,titulos[i]])} onLogout={onLogout} refresh={()=>ejecutar(()=>Promise.resolve(),"Datos actualizados.")}>
       {error && (
         <p role="alert">
           {error}{" "}
@@ -165,15 +152,7 @@ export default function AdminServidor({ onLogout }) {
       )}
       {datos && (
         <>
-          {seccion === "resumen" && (
-            <section>
-              <h2>Resumen de la tienda</h2>
-              <p>
-                {datos.productos.length} productos · {datos.usuarios.length}{" "}
-                cuentas · {datos.ordenes.length} pedidos
-              </p>
-            </section>
-          )}
+          {seccion === "resumen" && <AdminDashboard datos={datos} />}
           {seccion === "productos" && (
             <section>
               <h2>Catálogo de productos</h2>
@@ -224,12 +203,11 @@ export default function AdminServidor({ onLogout }) {
                   </button>
                 </form>
               )}
-              {datos.productos.map((p) => (
-                <article className="border-bottom py-3" key={p.id}>
-                  <strong>{p.nombre}</strong>
-                  <p>
-                    {p.categoria} · {precioCLP(p.precio)} · {p.stock} unidades
-                  </p>
+              <div className="nx-filter"><input className="form-control" aria-label="Buscar productos" placeholder="Buscar por nombre o categoría" value={busqueda} onChange={e=>setBusqueda(e.target.value)}/><select className="form-select" aria-label="Filtrar categoría" value={filtro} onChange={e=>setFiltro(e.target.value)}><option value="">Todas las categorías</option>{categorias.map(c=><option key={c}>{c}</option>)}</select></div>
+              <div className="nx-panel table-responsive"><table className="table table-hover align-middle mb-0"><thead><tr><th>Producto</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Acciones</th></tr></thead><tbody>
+              {productosVisibles.map((p) => (
+                <tr key={p.id}>
+                  <td><strong>{p.nombre}</strong></td><td>{p.categoria}</td><td>{precioCLP(p.precio)}</td><td><span className={"nx-badge "+(p.stock<=5?"warning":"ok")}>{p.stock} un.</span></td><td>
                   <button
                     className="btn btn-sm btn-outline-info me-2"
                     onClick={() => setEdicion({ ...vacio, ...p })}
@@ -268,8 +246,10 @@ export default function AdminServidor({ onLogout }) {
                       Retirar del catálogo
                     </button>
                   )}
-                </article>
+                  </td>
+                </tr>
               ))}
+              </tbody></table>{!productosVisibles.length&&<p className="nx-empty">No hay productos para esta búsqueda.</p>}</div>
             </section>
           )}
           {seccion === "categorias" && (
@@ -290,23 +270,24 @@ export default function AdminServidor({ onLogout }) {
           {seccion === "usuarios" && (
             <section>
               <h2>Cuentas registradas</h2>
-              <ul>
-                {datos.usuarios.map((u) => (
-                  <li key={u.id}>
-                    {u.nombre} · {u.email}
-                  </li>
+              <div className="nx-filter"><input className="form-control" aria-label="Buscar clientes" placeholder="Buscar por nombre o correo" value={busqueda} onChange={e=>setBusqueda(e.target.value)}/></div><div className="nx-panel table-responsive"><table className="table mb-0"><thead><tr><th>Nombre</th><th>Correo</th></tr></thead><tbody>
+                {usuariosVisibles.map((u) => (
+                  <tr key={u.id}>
+                    <td>{u.nombre}</td><td>{u.email||u.correo}</td>
+                  </tr>
                 ))}
-              </ul>
+</tbody></table>{!usuariosVisibles.length&&<p className="nx-empty">No hay cuentas para esta búsqueda.</p>}</div>
             </section>
           )}
           {seccion === "ordenes" && (
             <section>
               <h2>Pedidos</h2>
               {!datos.ordenes.length && <p>Aún no hay pedidos.</p>}
-              {datos.ordenes.map((o) => (
-                <article className="border-bottom py-3" key={o.id}>
+              <div className="nx-filter"><input className="form-control" aria-label="Buscar pedidos" placeholder="Buscar por pedido o cliente" value={busqueda} onChange={e=>setBusqueda(e.target.value)}/><select className="form-select" aria-label="Filtrar estado" value={filtro} onChange={e=>setFiltro(e.target.value)}><option value="">Todos los estados</option>{[...new Set(datos.ordenes.map(o=>o.estado))].map(e=><option key={e}>{e}</option>)}</select></div>
+              {ordenesVisibles.map((o) => (
+                <article className="nx-panel mb-3" key={o.id}>
                   <h3 className="h5">
-                    Pedido {o.id} · {o.estado}
+                    Pedido {o.id} <span className="nx-badge">{o.estado.replaceAll("_"," ")}</span>
                   </h3>
                   <p>
                     {o.cliente.nombre} · {o.cliente.correo} ·{" "}
@@ -378,6 +359,6 @@ export default function AdminServidor({ onLogout }) {
           )}
         </>
       )}
-    </main>
+    </AdminLayout>
   );
 }
