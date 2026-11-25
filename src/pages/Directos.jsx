@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { apiRequest } from "../api/client.js";
+import { servidoresIce, verDirecto } from "../utils/directos.js";
 
 const base = "/api/v1/directos";
 const pausa = ms => new Promise(done => setTimeout(done, ms));
 function conexion() {
-  return new RTCPeerConnection({iceServers: JSON.parse(import.meta.env.VITE_ICE_SERVERS || "[]")});
+  return new RTCPeerConnection({iceServers: servidoresIce(import.meta.env.VITE_ICE_SERVERS)});
 }
 async function descripcion(peer, tipo) {
   await peer.setLocalDescription(await (tipo === "offer" ? peer.createOffer() : peer.createAnswer()));
@@ -78,21 +79,7 @@ export default function Directos({usuario}) {
           await pausa(750);
         }
       }else{
-        s.id=canal.id;const peer=conexion();s.peers.set("emisor",peer);
-        peer.ontrack=e=>{if(!s.fin && video.current)video.current.srcObject=e.streams[0];};
-        peer.onconnectionstatechange=()=>{if(!s.fin && peer.connectionState==="connected")setFase("Viendo "+canal.titulo);};
-        peer.addTransceiver("video",{direction:"recvonly"});peer.addTransceiver("audio",{direction:"recvonly"});
-        const sdp=await descripcion(peer,"offer");
-        if(s.fin)return;
-        await apiRequest(base+"/"+s.id+"/oferta",{method:"PUT",body:{sdp}});
-        const inicio=Date.now();
-        while(!s.fin){
-          const respuesta=await apiRequest(base+"/"+s.id+"/respuesta");
-          if(s.fin)break;
-          if(respuesta.sdp && !peer.remoteDescription)await peer.setRemoteDescription({type:"answer",sdp:respuesta.sdp});
-          if(peer.connectionState==="failed" || (!peer.remoteDescription && Date.now()-inicio>60000))throw Error("No se pudo conectar con el emisor. Vuelve a entrar al directo.");
-          await pausa(1000);
-        }
+        await verDirecto({ s, canal, conexion, descripcion, apiRequest, base, pausa, setFase, video });
       }
     }catch(e){if(!s.fin){setError(e.status===410?"La transmisión terminó.":e.message);salir();}}
   }
@@ -104,7 +91,7 @@ export default function Directos({usuario}) {
       <button className="btn btn-primary" disabled={!titulo.trim()}>Iniciar transmisión</button></form>
       <h2>Canales en vivo</h2>{lista.length?lista.map(c=><button className="btn btn-outline-info me-2" key={c.id} onClick={()=>iniciar(c)}>Ver {c.titulo}</button>):<p>Todavía no hay transmisiones.</p>}</>}
     <video ref={video} hidden={!fase} autoPlay playsInline controls muted={emitiendo} style={{width:"100%",maxHeight:"65vh",background:"#111"}}/>
-    {fase && <><p role="status">{fase}</p>{emitiendo && <button className="btn btn-outline-info me-2" onClick={()=>{const t=actual.current.stream?.getAudioTracks()[0];if(t){t.enabled=!t.enabled;setMicro(t.enabled);}}}>{micro?"Silenciar micrófono":"Activar micrófono"}</button>}
+    {fase && <><p role="status">{fase}</p>{emitiendo && <button className="btn btn-outline-info me-2" onClick={()=>{const t=actual.current?.stream?.getAudioTracks()[0];if(t){t.enabled=!t.enabled;setMicro(t.enabled);}}}>{micro?"Silenciar micrófono":"Activar micrófono"}</button>}
     <button className="btn btn-danger" onClick={salir}>{emitiendo?"Finalizar transmisión":"Salir del directo"}</button></>}
     {error && <p role="alert">{error}</p>}</>}</main>;
 }

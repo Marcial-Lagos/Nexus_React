@@ -82,3 +82,9 @@ El chat de comunidad, los controles de streaming y el formulario de contacto con
 El inventario de funciones y el listado exacto de archivos están en [docs/MIGRACION.md](docs/MIGRACION.md).
 
 Fuentes: [Nexus original](https://github.com/Marcial-Lagos/Nexus/tree/f8655c9d2a82af109251885f01202c6f967df8fe) y [ejemplo del profesor](https://github.com/ArkDerr/2026_2_DSY1104-016V/tree/main/ProyectoEjemploReact/MiPrimerProyectoReact).
+
+## WebRTC: conectividad y reconexion
+
+`VITE_ICE_SERVERS` accepts a JSON array of RTCIceServer objects. Default `[]` only uses local ICE candidates; configure your own STUN/TURN service for different networks. In Compose, set the variable in the root `.env` and rebuild the frontend (`docker compose build frontend`). In Vite development, configure it in the frontend `.env.local`. Never embed permanent TURN credentials in Vite variables: these are public in the browser bundle. For production, use a backend endpoint issuing short-lived TURN credentials; this is not implemented yet.
+
+Viewers retry transient signaling failures and failed media connections at most three times, with 1/2/4-second backoff; a closed channel (HTTP 410) is not retried. Test with two physical devices on distinct networks before relying on remote streaming.
