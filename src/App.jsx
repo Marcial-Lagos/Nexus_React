@@ -9,6 +9,7 @@ import Contacto from "./pages/Contacto.jsx";
 import Perfil from "./pages/Perfil.jsx";
 import Tienda from "./pages/Tienda.jsx";
 import Producto from "./pages/Producto.jsx";
+import Directos from "./pages/Directos.jsx";
 import Stream from "./pages/Stream.jsx";
 import { biografiaOriginal } from "./data/nexus.js";
 import { guardarSesion, leerSesion } from "./utils/sesion.js";
@@ -625,7 +626,7 @@ export default function App() {
         />
         <Route
           path="/stream"
-          element={proteger(<Stream usuario={usuario} />)}
+          element={proteger(apiMode ? <Directos usuario={usuario} /> : <Stream usuario={usuario} />)}
         />
         <Route
           path="*"
