@@ -15,3 +15,17 @@ test("muestra y envia mensajes al canal",async()=>{
   expect(await screen.findByText("Buenas")).toBeInTheDocument();
   expect(apiRequest).toHaveBeenCalledWith("/api/v1/directos/abc/chat",expect.objectContaining({method:"POST",body:{texto:"Buenas"}}));
 });
+
+test("historial archivado es de solo lectura",async()=>{
+  apiRequest.mockResolvedValue([{id:7,usuario:"2",texto:"Archivado"}]);
+  render(<ChatDirecto id="abc" soloLectura/>);
+  expect(await screen.findByText("Archivado")).toBeInTheDocument();
+  expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+});
+test("consulta el canal de comunidad y filtra los mensajes cargados",async()=>{
+  apiRequest.mockResolvedValue([{id:1,usuario:"2",texto:"Hola"},{id:2,usuario:"3",texto:"Otro"}]);
+  render(<ChatDirecto canal="Sala general" busqueda="Hola"/>);
+  expect(await screen.findByText("Hola")).toBeInTheDocument();
+  expect(screen.queryByText("Otro")).not.toBeInTheDocument();
+  expect(apiRequest).toHaveBeenCalledWith("/api/v1/comunidad/chat?canal=Sala%20general",expect.anything());
+});

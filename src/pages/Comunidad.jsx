@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import BarraServidores from "../components/BarraServidores.jsx";
 import SalaVoz from "../components/SalaVoz.jsx";
+import ChatDirecto from "../components/ChatDirecto.jsx";
 
 const mensajesIniciales = [
   {
@@ -91,7 +92,7 @@ export default function Comunidad({ usuario, cantidadCarrito = 0 }) {
       .includes(busqueda.toLocaleLowerCase("es")),
   );
   return (
-    <div className={`cuerpo-comunidad${miembros ? "" : " sin-miembros"}`}>
+    <div className={`cuerpo-comunidad${miembros && !usuario.autenticadoApi ? "" : " sin-miembros"}`}>
       <BarraServidores cantidadCarrito={cantidadCarrito} />
       <aside className={`barra-lateral-canales${menu ? " abierto" : ""}`}>
         <div className="titulo-comunidad">
@@ -192,6 +193,8 @@ export default function Comunidad({ usuario, cantidadCarrito = 0 }) {
             onChange={(e) => setBusqueda(e.target.value)}
           />
         )}
+        {usuario.autenticadoApi && <ChatDirecto key={canal} canal={canal} busqueda={busqueda} />}
+        {!usuario.autenticadoApi && <>
         {aviso && (
           <p className="aviso-local" role="status">
             {aviso}
@@ -274,8 +277,9 @@ export default function Comunidad({ usuario, cantidadCarrito = 0 }) {
             ➤
           </button>
         </form>
+        </>}
       </main>
-      {miembros && !vozReal && (
+      {miembros && !usuario.autenticadoApi && (
         <aside className="barra-lateral-miembros">
           <p className="encabezado-lateral">EN LÍNEA — 4</p>
           {[

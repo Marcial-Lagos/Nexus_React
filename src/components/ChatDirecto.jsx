@@ -1,41 +1,55 @@
 import { useEffect, useState } from "react";
 import { apiRequest } from "../api/client.js";
 
-export default function ChatDirecto({ id }) {
+function unir(a,b){return [...new Map([...a,...b].map(m=>[m.id,m])).values()].sort((x,y)=>x.id-y.id);}
+export default function ChatDirecto({ id, canal, soloLectura=false, busqueda="" }) {
   const [mensajes,setMensajes]=useState([]), [texto,setTexto]=useState("");
   const [error,setError]=useState(""), [enviando,setEnviando]=useState(false);
-  const ruta="/api/v1/directos/"+id+"/chat";
+  const [anteriores,setAnteriores]=useState([]), [cargando,setCargando]=useState(false), [fin,setFin]=useState(false);
+  const ruta=canal ? "/api/v1/comunidad/chat?canal="+encodeURIComponent(canal) : "/api/v1/directos/"+id+"/chat";
+  const lista=unir(anteriores,mensajes);
+  const visibles=lista.filter(m=>(m.texto+" "+m.usuario).toLocaleLowerCase("es").includes(busqueda.toLocaleLowerCase("es")));
   useEffect(()=>{
     let vivo=true, timer;
     async function poll(){
       try{
-        const lista=await apiRequest(ruta,{signal:AbortSignal.timeout(10000)});
-        if(vivo){setMensajes(lista);setError("");}
+        const recibidos=await apiRequest(ruta,{signal:AbortSignal.timeout(10000)});
+        if(vivo){setMensajes(recibidos);setError("");}
       }catch(e){if(vivo)setError(e.message);}
-      if(vivo)timer=setTimeout(poll,1200);
+      if(vivo&&!soloLectura)timer=setTimeout(poll,1200);
     }
     poll();
     return ()=>{vivo=false;clearTimeout(timer);};
-  },[ruta]);
+  },[ruta,soloLectura]);
+  async function cargar(){
+    if(cargando||fin||!lista.length)return;
+    setCargando(true);
+    try{
+      const prev=await apiRequest(ruta+(canal?"&":"?")+"antes="+lista[0].id);
+      setAnteriores(a=>unir(a,prev));setFin(prev.length<100);
+    }catch(e){setError(e.message);}
+    finally{setCargando(false);}
+  }
   async function enviar(e){
-    e.preventDefault();if(enviando||!texto.trim())return;
+    e.preventDefault();if(soloLectura||enviando||!texto.trim())return;
     setEnviando(true);
     try{
       const m=await apiRequest(ruta,{method:"POST",body:{texto:texto.trim()},signal:AbortSignal.timeout(10000)});
-      setMensajes(prev=>prev.some(x=>x.id===m.id)?prev:[...prev,m]);setTexto("");setError("");
+      setMensajes(prev=>unir(prev,[m]));setTexto("");setError("");
     }catch(e){setError(e.message);}
     finally{setEnviando(false);}
   }
   return <aside className="border rounded p-3 mt-3">
-    <h2 className="h5">Chat en directo</h2>
-    <div role="log" aria-label="Mensajes del directo" style={{maxHeight:"240px",overflowY:"auto"}}>
-      {mensajes.length===0 && <p>Inicia la conversacion.</p>}
-      {mensajes.map(m=><p key={m.id} className="mb-2"><strong>Usuario {m.usuario}: </strong>{m.texto}</p>)}
+    <h2 className="h5">{canal?"Chat de la comunidad":soloLectura?"Historial del directo":"Chat en directo"}</h2>
+    {lista.length>=100 && !fin && <button className="btn btn-outline-secondary btn-sm mb-2" onClick={cargar} disabled={cargando}>Cargar mensajes anteriores</button>}
+    <div role="log" aria-label={canal?"Mensajes de la comunidad":"Mensajes del directo"} style={{maxHeight:"240px",overflowY:"auto"}}>
+      {lista.length===0 && <p>{soloLectura?"No hay mensajes guardados.":"Inicia la conversacion."}</p>}
+      {visibles.map(m=><p key={m.id} className="mb-2"><strong>Usuario {m.usuario}: </strong>{m.texto} {m.fecha&&<small className="text-secondary">{new Date(m.fecha).toLocaleString("es-CL")}</small>}</p>)}
     </div>
-    <form onSubmit={enviar} className="d-flex gap-2">
-      <input className="form-control" aria-label="Mensaje del directo" maxLength={500} value={texto} onChange={e=>setTexto(e.target.value)} />
+    {!soloLectura&&<form onSubmit={enviar} className="d-flex gap-2">
+      <input className="form-control" aria-label={canal?"Mensaje para la comunidad":"Mensaje del directo"} maxLength={canal?2000:500} value={texto} onChange={e=>setTexto(e.target.value)} />
       <button className="btn btn-primary" disabled={enviando||!texto.trim()}>Enviar</button>
-    </form>
+    </form>}
     {error && <p role="alert">{error}</p>}
   </aside>;
 }

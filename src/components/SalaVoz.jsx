@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { apiRequest } from "../api/client.js";
 import { servidoresIce } from "../utils/directos.js";
+import { consultarVoz } from "../utils/voz.js";
 const pausa = ms => new Promise(r => setTimeout(r, ms));
 
 function AudioRemoto({ stream, silencio }) {
@@ -73,8 +74,8 @@ export default function SalaVoz({ sala, usuario }) {
           const data=new Uint8Array(s.analyser.fftSize);s.analyser.getByteTimeDomainData(data);
           hablando=Math.sqrt(data.reduce((sum,x)=>sum+((x-128)/128)**2,0)/data.length)>0.025;
         }
-        const res=await request("/estado",{method:"POST",body:{hablando,silencio:!track.enabled}});
-        if(s.fin)break;
+        const res=await consultarVoz(request,{hablando,silencio:!track.enabled},{pausa,activo:()=>!s.fin,estado:setEstado});
+        if(s.fin || !res)break;
         setMiembros(res.miembros);
         const otros=res.miembros.filter(m=>m.id!==yo);
         for(const [id,peer] of s.peers)if(!otros.some(m=>m.id===id)){

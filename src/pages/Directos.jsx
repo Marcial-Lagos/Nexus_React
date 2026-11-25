@@ -24,6 +24,7 @@ function detener(s) {
 export default function Directos({usuario}) {
   const [lista,setLista]=useState([]), [titulo,setTitulo]=useState(""), [modo,setModo]=useState("cámara");
   const [fase,setFase]=useState(""), [error,setError]=useState(""), [micro,setMicro]=useState(true);
+  const [archivos,setArchivos]=useState(null), [archivo,setArchivo]=useState(null);
   const [canalId,setCanalId]=useState(null), [dispositivos,setDispositivos]=useState([]);
   const [camara,setCamara]=useState(""), [microfono,setMicrofono]=useState("");
   const [videoActivo,setVideoActivo]=useState(true);
@@ -107,6 +108,7 @@ export default function Directos({usuario}) {
     <video className="rounded shadow" ref={video} hidden={!fase} autoPlay playsInline controls muted={emitiendo} style={{width:"100%",maxHeight:"65vh",background:"#111"}}/>
     {fase && <><p role="status">{fase}</p>{canalId && <p>{lista.find(c=>c.id===canalId)?.espectadores??0} espectadores conectados</p>}<button className="btn btn-outline-secondary me-2" onClick={()=>video.current?.requestFullscreen?.().catch(()=>{})}>Pantalla completa</button>{emitiendo && <button className="btn btn-outline-info me-2" onClick={()=>{const t=actual.current?.stream?.getVideoTracks()[0];if(t){t.enabled=!t.enabled;setVideoActivo(t.enabled);}}}>{videoActivo?"Ocultar video":"Activar video"}</button>}{emitiendo && <button className="btn btn-outline-info me-2" onClick={()=>{const t=actual.current?.stream?.getAudioTracks()[0];if(t){t.enabled=!t.enabled;setMicro(t.enabled);}}}>{micro?"Silenciar micrófono":"Activar micrófono"}</button>}
     <button className="btn btn-danger" onClick={salir}>{emitiendo?"Finalizar transmisión":"Salir del directo"}</button></>}
+    {!fase && <section className="mt-3"><button className="btn btn-outline-info" onClick={async()=>{if(archivos){setArchivos(null);setArchivo(null);return;}try{setArchivos(await apiRequest(base+"/archivo"));}catch(e){setError(e.message);}}}>Historial de transmisiones</button>{archivos && <div className="mt-2">{archivos.length===0 && <p>No hay transmisiones guardadas.</p>}{archivos.map(a=><button className="btn btn-outline-secondary me-2" key={a.id} onClick={()=>setArchivo(a)}>{a.titulo}</button>)}{archivo&&<ChatDirecto key={archivo.id} id={archivo.id} soloLectura/>}</div>}</section>}
     {canalId && <ChatDirecto key={canalId} id={canalId} />}
     {error && <p role="alert">{error}</p>}</>}</main>;
 }
