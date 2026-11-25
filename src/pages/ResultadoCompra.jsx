@@ -22,7 +22,7 @@ export default function ResultadoCompra({
   const pedido = ordenes.find(
     (o) =>
       o.id === id &&
-      (apiMode || o.sesionId === usuario?.id || esAdmin(usuario)),
+      (o.sesionId === usuario?.id || esAdmin(usuario)),
   );
   if (!pedido && apiMode && cargando)
     return (
@@ -44,7 +44,7 @@ export default function ResultadoCompra({
       <p>Estado: {pedido.estado}</p>
       <p>
         {apiMode
-          ? "El servidor confirmó el pedido. No se procesó ningún pago."
+          ? (pedido.referenciaPago ? "Pago de prueba aprobado · " + pedido.referenciaPago : "Pedido registrado. Pago pendiente.")
           : "Confirmación de demostración; no es una boleta tributaria ni un cobro real."}
       </p>
       <ul>
@@ -61,6 +61,7 @@ export default function ResultadoCompra({
           ? "no informado por el servidor"
           : precioCLP(pedido.total)}
       </strong>
+      {apiMode && <p>Entrega: {pedido.cliente.direccion}</p>}
       {!apiMode && (
         <p>
           Entrega:{" "}

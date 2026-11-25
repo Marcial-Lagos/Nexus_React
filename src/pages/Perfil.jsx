@@ -31,13 +31,13 @@ export default function Perfil({
     setErrorGuardado(false);
     try {
       await onUpdate({
-        nombre: nombre.trim() || "Marcial",
+        nombre: nombre.trim() || usuario.nombre,
         biografia: biografia.trim(),
       });
       setEditando(false);
       setAviso(
         apiMode
-          ? "Perfil actualizado en el servidor. La biografía se conserva en esta sesión."
+          ? "Perfil actualizado en el servidor."
           : "Perfil actualizado en esta sesión de demostración.",
       );
     } catch (err) {
@@ -168,7 +168,7 @@ export default function Perfil({
               className="d-flex justify-content-between gap-3 border-bottom py-2"
             >
               <div>
-                <strong>Pedido {pedido.id}</strong>
+                <Link to={"/compra/" + pedido.id}>Pedido {pedido.id}</Link>
                 <p className="mb-0">
                   {pedido.fecha
                     ? new Date(pedido.fecha).toLocaleDateString()

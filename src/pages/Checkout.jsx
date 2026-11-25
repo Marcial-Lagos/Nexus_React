@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import CampoFormulario from "../components/CampoFormulario.jsx";
 import { validarEntrega, prepararCompra } from "../data/pedidos.js";
@@ -9,8 +9,16 @@ export default function Checkout({
   carrito,
   onConfirm,
   apiMode = false,
+  onGuestLogin,
 }) {
-  const [form, setForm] = useState({
+  const [borrador] = useState(() => {
+    if (!apiMode || !usuario?.autenticadoApi) return null;
+    try {
+      const previo = JSON.parse(sessionStorage.getItem("nexus.entrega"));
+      return previo?.usuarioId === usuario.id ? previo : null;
+    } catch { return null; }
+  });
+  const [form, setForm] = useState(() => borrador?.form || {
     nombre: usuario?.nombre || "",
     correo: usuario?.correo || "",
     direccion: "",
@@ -19,7 +27,12 @@ export default function Checkout({
   });
   const [errores, setErrores] = useState({});
   const [error, setError] = useState("");
-  const [pago, setPago] = useState("aprobado");
+  const [pago, setPago] = useState(borrador?.pago || (apiMode ? "TARJETA" : "aprobado"));
+  useEffect(() => {
+    if (!apiMode || !usuario?.autenticadoApi) return;
+    try { sessionStorage.setItem("nexus.entrega", JSON.stringify({ usuarioId: usuario.id, form, pago })); }
+    catch { /* El formulario sigue disponible mientras está abierto. */ }
+  }, [apiMode, usuario?.id, usuario?.autenticadoApi, form, pago]);
   const [enviando, setEnviando] = useState(false);
   const compraId = useRef(crypto.randomUUID());
   const ocupado = useRef(false);
@@ -55,9 +68,20 @@ export default function Checkout({
     ocupado.current = true;
     setEnviando(true);
     try {
+      let intento = compraId.current;
+      if (apiMode) {
+        const firma = JSON.stringify([usuario.id, carrito.map((i) => [i.id, i.cantidad]), form, pago]);
+        const previo = JSON.parse(sessionStorage.getItem("nexus.intento") || "null");
+        intento = previo?.firma === firma ? previo.id : crypto.randomUUID();
+        sessionStorage.setItem("nexus.intento", JSON.stringify({ firma, id: intento }));
+      }
       const resultado = apiMode
-        ? await onConfirm(form, pago, compraId.current)
+        ? await onConfirm(form, pago, intento)
         : onConfirm(form, pago, compraId.current);
+      if (apiMode) {
+        sessionStorage.removeItem("nexus.intento");
+        sessionStorage.removeItem("nexus.entrega");
+      }
       navegar(
         resultado.rechazado
           ? "/compra/rechazada"
@@ -80,10 +104,12 @@ export default function Checkout({
       <h1 className="my-3">Finalizar compra</h1>
       <p>
         {apiMode
-          ? "El pedido se enviará al servidor. Los campos de entrega se conservan solo en esta pantalla porque el contrato auditado no define datos de despacho; no se procesará un pago."
+          ? "Guardaremos el pedido y la entrega en tu cuenta. El pago es simulado."
           : "Compra de demostración. No se cobran pagos reales ni se solicitan datos bancarios."}
       </p>
-      {errorCarrito ? (
+      {apiMode && usuario?.invitado ? (
+        <p><Link className="btn btn-primary" to="/login" state={{ volver: "/checkout" }} onClick={onGuestLogin}>Inicia sesión para confirmar tu carrito</Link></p>
+      ) : errorCarrito ? (
         <p role="alert">{errorCarrito}</p>
       ) : (
         <div className="row g-4">
@@ -108,6 +134,14 @@ export default function Checkout({
                   {campo("comuna", "Comuna")}
                 </>
               )}
+              {apiMode && (<>
+                <label htmlFor="metodoPago">Método de pago simulado</label>
+                <select id="metodoPago" className="form-select my-2" value={pago} onChange={(e) => setPago(e.target.value)}>
+                  <option value="TARJETA">Tarjeta de prueba</option>
+                  <option value="TRANSFERENCIA">Transferencia de prueba</option>
+                  <option value="EFECTIVO">Efectivo de prueba</option>
+                </select>
+              </>)}
               {!apiMode && (
                 <>
                   <label htmlFor="pagoSimulado">Resultado del pago de prueba</label>
@@ -145,18 +179,9 @@ export default function Checkout({
                 </li>
               ))}
             </ul>
-            {apiMode ? (
-              <p>
-                El servidor valida precios, stock y monto final. Esta estimación
-                y los datos de entrega no se envían en el contrato disponible.
-              </p>
-            ) : (
-              <>
-                <p>Subtotal: {precioCLP(resumen.subtotal)}</p>
-                <p>Envío: {precioCLP(resumen.envio)}</p>
-                <strong>Total: {precioCLP(resumen.total)}</strong>
-              </>
-            )}
+            <p>Subtotal: {precioCLP(resumen.subtotal)}</p>
+            <p>Envío: {precioCLP(resumen.envio)}</p>
+            <strong>Total: {precioCLP(resumen.total)}</strong>
           </section>
         </div>
       )}

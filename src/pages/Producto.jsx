@@ -143,7 +143,7 @@ export default function Producto({
                   onAdd(producto, cantidad);
                   setError("");
                   setMensaje(
-                    `¡${cantidad} × ${producto.nombre} agregado al carrito de demostración!`,
+                    `¡${cantidad} × ${producto.nombre} agregado al carrito${apiMode ? "" : " de demostración"}!`,
                   );
                 } catch (err) {
                   setMensaje("");

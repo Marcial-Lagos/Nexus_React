@@ -25,7 +25,7 @@ describe("cliente API Nexus", () => {
   test("mapea login al endpoint Gateway y guarda solo el token de sesión", async () => {
     vi.stubEnv("VITE_API_BASE_URL", "http://localhost:8080/");
     const token = `x.${btoa(
-      JSON.stringify({ sub: "usuario-42", nombre: "Ana", email: "ana@example.com" }),
+      JSON.stringify({ sub: "ana@example.com", usuarioId: 42, nombre: "Ana", email: "ana@example.com" }),
     )}.x`;
     const fetch = vi.fn().mockResolvedValue(
       response({ token, usuario: { nombre: "Ana", correo: "ana@example.com" } }),
@@ -39,13 +39,13 @@ describe("cliente API Nexus", () => {
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({
-          correo: "ana@example.com",
-          contrasena: "NoPersistir123!",
+          email: "ana@example.com",
+          password: "NoPersistir123!",
         }),
       }),
     );
     expect(usuario).toMatchObject({
-      id: "usuario-42",
+      id: "42",
       nombre: "Ana",
       correo: "ana@example.com",
       rol: "cliente",
@@ -90,9 +90,8 @@ describe("cliente API Nexus", () => {
     );
     vi.stubGlobal("fetch", fetch);
 
-    await crearPedidoApi("usuario-42", [
-      { id: "p-7", cantidad: 2, precio: 3500 },
-    ]);
+    const entrega = { nombre: "Ana", correo: "ana@example.com", entrega: "domicilio", direccion: "Calle 7", comuna: "Paine" };
+    await crearPedidoApi("42", [{ id: "7", cantidad: 2, precio: 3500 }], entrega, "TARJETA", "reintento");
 
     expect(fetch).toHaveBeenCalledWith(
       `http://localhost:8080${API_PATHS.orders}`,
@@ -100,8 +99,9 @@ describe("cliente API Nexus", () => {
         method: "POST",
         headers: expect.objectContaining({ Authorization: "Bearer jwt" }),
         body: JSON.stringify({
-          usuarioId: "usuario-42",
-          items: [{ productoId: "p-7", cantidad: 2 }],
+          usuarioId: 42, solicitudId: "reintento", tipoEntrega: "domicilio", direccionEntrega: "Calle 7, Paine",
+          nombreContacto: "Ana", correoContacto: "ana@example.com", metodoPago: "TARJETA",
+          items: [{ productoId: 7, cantidad: 2 }],
         }),
       }),
     );
@@ -126,6 +126,7 @@ describe("cliente API Nexus", () => {
     expect(fetch.mock.calls[0][0]).toBe(
       `http://localhost:8080${API_PATHS.register}`,
     );
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ nombre: "Ana Lagos", email: "ana@example.com", password: "ClaveSecreta1!" });
     expect(fetch.mock.calls[0][1].body).not.toContain("confirmacion");
     expect(fetch.mock.calls[0][1].body).not.toContain("terminos");
     expect(sessionStorage.getItem("nexus.api.token")).toBeNull();

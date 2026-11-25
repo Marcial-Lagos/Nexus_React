@@ -30,6 +30,9 @@ export default function RegistroForm({
     if (activo) nombreRef.current?.focus();
   }, [activo]);
   const errores = validarRegistro(datos);
+  if (apiMode) {
+    delete errores.usuario;
+  }
   function cambiar(campo, valor) {
     setDatos((actual) => ({ ...actual, [campo]: valor }));
     setTocados((actual) => ({ ...actual, [campo]: true }));
@@ -105,7 +108,7 @@ export default function RegistroForm({
           placeholder: "Ej: Riquelme",
         })}
       </div>
-      {campo("usuario", "Nombre de usuario", "text", {
+      {!apiMode && campo("usuario", "Nombre de usuario", "text", {
         autoComplete: "username",
         minLength: 4,
         maxLength: 16,
@@ -117,6 +120,7 @@ export default function RegistroForm({
       })}
       {campo("nacimiento", "Fecha de nacimiento", "date", {
         autoComplete: "bday",
+        ayuda: apiMode ? "La fecha se usa en esta pantalla para comprobar la edad mínima de 13 años." : undefined,
         min: "1900-01-01",
       })}
       <div className="fila-campos-registro">

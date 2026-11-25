@@ -40,6 +40,8 @@ export function saveAccessToken(token) {
 export function clearAccessToken() {
   try {
     sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem("nexus.intento");
+    sessionStorage.removeItem("nexus.entrega");
   } catch {
     // La sesión en memoria sigue siendo válida hasta cerrar o recargar la página.
   }
@@ -122,7 +124,7 @@ export async function apiRequest(path, { method = "GET", body, signal } = {}) {
 }
 
 function firstValue(...values) {
-  return values.find((value) => value !== undefined && value !== null && value !== "");
+  return values.find((value) => value !== undefined && value !== null && value !== "") ?? values.at(-1);
 }
 
 function unwrap(value) {
@@ -144,7 +146,8 @@ export function normalizeProduct(input = {}) {
       typeof category === "object"
         ? String(firstValue(category.id, category.categoriaId, category.nombre, ""))
         : String(category ?? ""),
-    imagen: firstValue(product.imagen, product.image, product.urlImagen, ""),
+    icono: product.icono || "gamepad",
+    imagen: firstValue(product.imagenUrl, product.imagen, product.image, product.urlImagen, ""),
   };
 }
 
@@ -174,7 +177,7 @@ export function normalizeOrder(input = {}) {
     return {
       id: String(firstValue(line.productoId, line.productId, product.id, line.id, "")),
       nombre: String(firstValue(line.nombre, line.nombreProducto, product.nombre, product.name, "Producto")),
-      precio: Number(firstValue(line.precio, line.price, product.precio, product.price, 0)),
+      precio: Number(firstValue(line.precioUnitario, line.precio, line.price, product.precio, product.price, 0)),
       cantidad: Number(firstValue(line.cantidad, line.quantity, 1)),
     };
   });
@@ -190,8 +193,8 @@ export function normalizeOrder(input = {}) {
     total: rawTotal === undefined ? null : Number(rawTotal),
     envio: Number(firstValue(order.envio, order.costoEnvio, 0)),
     cliente: {
-      nombre: String(firstValue(customer.nombre, customer.name, "")),
-      correo: String(firstValue(customer.correo, customer.email, "")),
+      nombre: String(firstValue(order.nombreContacto, customer.nombre, customer.name, "")),
+      correo: String(firstValue(order.correoContacto, customer.correo, customer.email, "")),
       entrega: firstValue(order.tipoEntrega, order.entrega, order.deliveryType, "retiro"),
       direccion: String(firstValue(order.direccion, order.direccionEntrega, order.address, "")),
       comuna: String(firstValue(order.comuna, "")),
@@ -221,17 +224,16 @@ function authParts(response) {
     claims.usuarioId,
     claims.userId,
     claims.id,
-    claims.sub,
   );
   return {
     token: typeof token === "string" ? token : "",
     usuario: {
       id: id === undefined ? "" : String(id),
-      nombre: String(firstValue(data.nombre, data.name, user.nombre, claims.nombre, claims.name, "")),
-      correo: String(firstValue(data.correo, data.email, user.correo, claims.correo, claims.email, "")),
+      nombre: String(firstValue(data.nombre, data.name, user.nombre, claims.nombre, claims.name, (data.email || claims.sub || "").split("@")[0], "")),
+      correo: String(firstValue(data.correo, data.email, user.correo, claims.correo, claims.email, claims.sub, "")),
       biografia: user.biografia,
       invitado: false,
-      rol: "cliente",
+      rol: (data.rol || claims.rol) === "ADMIN" ? "admin" : "cliente",
       autenticadoApi: true,
     },
   };
@@ -240,7 +242,7 @@ function authParts(response) {
 export async function iniciarSesionApi(correo, contrasena) {
   const response = await apiRequest(API_PATHS.login, {
     method: "POST",
-    body: { correo: correo.trim(), contrasena },
+    body: { email: correo.trim(), password: contrasena },
   });
   const result = authParts(response);
   if (!result.token) {
@@ -254,12 +256,9 @@ export async function registrarUsuarioApi(datos) {
   const response = await apiRequest(API_PATHS.register, {
     method: "POST",
     body: {
-      nombre: datos.nombre.trim(),
-      apellido: datos.apellido.trim(),
-      usuario: datos.usuario.trim(),
-      correo: datos.correo.trim(),
-      fechaNacimiento: datos.nacimiento || "",
-      contrasena: datos.contrasena,
+      nombre: [datos.nombre, datos.apellido].filter(Boolean).map((s) => s.trim()).join(" "),
+      email: datos.correo.trim(),
+      password: datos.contrasena,
     },
   });
   const result = authParts(response);
@@ -286,7 +285,9 @@ export function usuarioDesdeToken() {
     return null;
   }
   const { usuario } = authParts({ token });
-  return usuario.id || usuario.correo || usuario.nombre ? usuario : null;
+  if (usuario.id && usuario.correo) return usuario;
+  clearAccessToken();
+  return null;
 }
 
 export async function obtenerProductos(options = {}) {
@@ -303,12 +304,12 @@ export async function obtenerPerfil(id, options = {}) {
   return normalizeProfile(await apiRequest(API_PATHS.profile(id), options));
 }
 
-export async function actualizarPerfil(id, cambios, usuario) {
+export async function actualizarPerfil(id, cambios) {
   const actualizado = await apiRequest(API_PATHS.profile(id), {
-    method: "PUT",
+    method: "PATCH",
     body: {
       nombre: cambios.nombre.trim(),
-      correo: usuario.correo,
+      biografia: cambios.biografia.trim(),
     },
   });
   return normalizeProfile(actualizado);
@@ -324,13 +325,19 @@ export async function obtenerPedidos(id, options = {}) {
   return rows.map(normalizeOrder);
 }
 
-export async function crearPedidoApi(id, carrito) {
+export async function crearPedidoApi(id, carrito, entrega, metodoPago, solicitudId) {
   const response = await apiRequest(API_PATHS.orders, {
     method: "POST",
     body: {
-      usuarioId: id,
+      usuarioId: Number(id),
+      solicitudId,
+      tipoEntrega: entrega.entrega,
+      direccionEntrega: entrega.entrega === "retiro" ? "Retiro en tienda" : [entrega.direccion.trim(), entrega.comuna.trim()].join(", "),
+      nombreContacto: entrega.nombre.trim(),
+      correoContacto: entrega.correo.trim(),
+      metodoPago,
       items: carrito.map((item) => ({
-        productoId: item.id,
+        productoId: Number(item.id),
         cantidad: item.cantidad,
       })),
     },

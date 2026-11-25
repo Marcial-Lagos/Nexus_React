@@ -22,6 +22,7 @@ import {
   validarEntrega,
 } from "./data/pedidos.js";
 import Admin from "./pages/Admin.jsx";
+import AdminServidor from "./pages/AdminServidor.jsx";
 import AdminLogin from "./pages/AdminLogin.jsx";
 import {
   leerAdministracion,
@@ -52,7 +53,7 @@ export default function App() {
     const autenticado = usuarioDesdeToken();
     if (autenticado) return autenticado;
     const sesion = leerSesion();
-    if (apiMode && sesion?.autenticadoApi) return null;
+    if (apiMode && !sesion?.invitado) return null;
     return sesion ? { ...sesion, id: sesion.id || crypto.randomUUID() } : null;
   });
   const [administracion, setAdministracion] = useState(leerAdministracion);
@@ -75,10 +76,24 @@ export default function App() {
         : "El navegador bloqueó el almacenamiento. Los cambios solo durarán mientras esta página esté abierta.",
     );
   }
-  const [carrito, setCarrito] = useState([]);
+  const [carrito, setCarrito] = useState(() => {
+    if (!apiMode || !usuario?.id) return [];
+    try {
+      const guardado = JSON.parse(sessionStorage.getItem("nexus.carrito"));
+      return guardado?.usuarioId === usuario.id && Array.isArray(guardado.items) ? guardado.items : [];
+    } catch { return []; }
+  });
+  useEffect(() => {
+    if (!apiMode) return;
+    try {
+      if (usuario?.id) sessionStorage.setItem("nexus.carrito", JSON.stringify({ usuarioId: usuario.id, items: carrito }));
+      else sessionStorage.removeItem("nexus.carrito");
+    } catch { /* El carrito sigue disponible en la pestaña. */ }
+  }, [apiMode, usuario?.id, carrito]);
   const [menu, setMenu] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const ubicacion = useLocation();
+  const enTienda = ubicacion.pathname === "/tienda";
   const productoSeleccionado =
     new URLSearchParams(ubicacion.search).get("producto");
   const detalleVisible =
@@ -125,7 +140,7 @@ export default function App() {
         if (!controller.signal.aborted) setCargandoProductos(false);
       });
     return () => controller.abort();
-  }, [apiMode]);
+  }, [apiMode, enTienda]);
   useEffect(() => {
     if (!apiMode || ubicacion.pathname !== "/producto") return undefined;
     const producto = productosApi.find(
@@ -158,7 +173,7 @@ export default function App() {
           ...actual,
           nombre: perfil.value.nombre || actual.nombre,
           correo: perfil.value.correo || actual.correo,
-          biografia: perfil.value.biografia || actual.biografia,
+          biografia: perfil.value.biografia,
         }));
       } else {
         setErrorPerfil(perfil.reason.message);
@@ -176,6 +191,8 @@ export default function App() {
   useEffect(() => {
     function cerrarSesionExpirada() {
       setUsuario(null);
+      setPedidosApi([]);
+      setIdPerfilCargado("");
       setCarrito([]);
     }
     window.addEventListener("nexus:session-expired", cerrarSesionExpirada);
@@ -213,6 +230,10 @@ export default function App() {
   }
   function salir() {
     clearAccessToken();
+    setPedidosApi([]);
+    setIdPerfilCargado("");
+    setErrorPedidos("");
+    setErrorPerfil("");
     setUsuario(null);
     setCarrito([]);
     setMenu(false);
@@ -221,13 +242,11 @@ export default function App() {
   function confirmarCompra(entrega, pago, id) {
     if (apiMode) {
       return (async () => {
-        if (!usuario?.id || usuario.invitado)
+        if (!usuario?.autenticadoApi || !usuario.id)
           throw new Error("Inicia sesión con una cuenta del servidor para crear un pedido.");
         if (Object.keys(validarEntrega(entrega)).length)
           throw new Error("Revisa los datos de entrega.");
-        if (pago === "rechazado")
-          throw new Error("Los pagos reales no están conectados; no se envió el pedido.");
-        const pedido = await crearPedidoApi(usuario.id, carrito);
+        const pedido = await crearPedidoApi(usuario.id, carrito, entrega, pago, id);
         if (!pedido.id)
           throw new Error(
             "El servidor recibió la solicitud, pero no devolvió el identificador del pedido. Revisa tu historial antes de volver a intentarlo.",
@@ -237,9 +256,6 @@ export default function App() {
           ...actuales.filter((existente) => existente.id !== pedido.id),
         ]);
         setCarrito([]);
-        obtenerPedidos(usuario.id)
-          .then(setPedidosApi)
-          .catch((error) => setErrorPedidos(error.message));
         obtenerProductos()
           .then(setProductosApi)
           .catch((error) => setErrorProductos(error.message));
@@ -348,6 +364,14 @@ export default function App() {
               <Navigate to="/admin" replace />
             ) : (
               <AdminLogin
+                onAuthenticate={apiMode ? async (correo, clave) => {
+                  const admin = await iniciarSesionApi(correo, clave);
+                  if (!esAdmin(admin)) {
+                    clearAccessToken();
+                    throw new Error("Esta cuenta no tiene permisos de administración.");
+                  }
+                  setUsuario(admin);
+                } : undefined}
                 onLogin={(datos) =>
                   setUsuario({ ...datos, id: crypto.randomUUID() })
                 }
@@ -358,15 +382,15 @@ export default function App() {
         <Route
           path="/admin/*"
           element={
-            <Admin
+            apiMode ? (
+              esAdmin(usuario) && usuario?.autenticadoApi
+                ? <AdminServidor onLogout={salir} />
+                : <Navigate to="/admin/login" replace />
+            ) : <Admin
               onChangeEstado={actualizarPedido}
               usuario={usuario}
               datos={administracion}
-              aviso={
-                apiMode
-                  ? "El panel sigue siendo una demostración local. El backend no expone autorización de administrador; estos cambios no tienen efecto en el servidor."
-                  : avisoAdmin
-              }
+              aviso={avisoAdmin}
               onLogout={salir}
               onSave={(tipo, registro) =>
                 actualizarDatos(
@@ -468,6 +492,7 @@ export default function App() {
               datos={{ ...administracion, productos }}
               carrito={carrito}
               onConfirm={confirmarCompra}
+              onGuestLogin={() => setUsuario(null)}
               apiMode={apiMode}
             />,
           )}
@@ -507,7 +532,7 @@ export default function App() {
           element={
             usuario ? (
               <Navigate
-                to={esAdmin(usuario) ? "/admin" : "/principal"}
+                to={esAdmin(usuario) ? "/admin" : ubicacion.state?.volver === "/checkout" ? "/checkout" : "/principal"}
                 replace
               />
             ) : (
@@ -552,7 +577,7 @@ export default function App() {
                   if (apiMode) {
                     if (!usuario?.id || usuario.invitado)
                       throw new Error("No se pudo identificar la cuenta del servidor.");
-                    const perfil = await actualizarPerfil(usuario.id, cambios, usuario);
+                    const perfil = await actualizarPerfil(usuario.id, cambios);
                     setUsuario((actual) => ({
                       ...actual,
                       nombre: perfil.nombre || cambios.nombre,

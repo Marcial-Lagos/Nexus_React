@@ -5,17 +5,24 @@ import {
   ADMIN_CLAVE,
   autenticarAdmin,
 } from "../data/administracion.js";
-export default function AdminLogin({ onLogin }) {
+export default function AdminLogin({ onLogin, onAuthenticate }) {
   const [correo, setCorreo] = useState("");
   const [clave, setClave] = useState("");
+  const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState("");
   return (
     <main className="container py-5" style={{ maxWidth: 560 }}>
       <h1>Acceso administrador</h1>
-      <p>Panel de demostración local de Nexus.</p>
+      <p>{onAuthenticate ? "Ingresa con tu cuenta de administración de Nexus." : "Panel de demostración local de Nexus."}</p>
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
+          if (onAuthenticate) {
+            if (ocupado) return;
+            setOcupado(true);
+            try { await onAuthenticate(correo, clave); } catch (err) { setError(err.message); } finally { setOcupado(false); }
+            return;
+          }
           const usuario = autenticarAdmin(correo, clave);
           if (!usuario) {
             setError("Credenciales de administrador incorrectas.");
@@ -49,11 +56,11 @@ export default function AdminLogin({ onLogin }) {
           onChange={(e) => setClave(e.target.value)}
         />
         {error && <p role="alert">{error}</p>}
-        <button className="btn btn-primary" type="submit">
+        <button className="btn btn-primary" type="submit" disabled={ocupado}>
           Ingresar al panel
         </button>
       </form>
-      <details className="my-3">
+      {!onAuthenticate && <><details className="my-3">
         <summary>Credenciales de demostración</summary>
         <p>
           Correo: {ADMIN_CORREO}
@@ -65,6 +72,7 @@ export default function AdminLogin({ onLogin }) {
         Este acceso no protege datos reales: la autenticación y los permisos
         deben validarse en un servidor en producción.
       </p>
+      </>}
       <Link to="/login">Volver al acceso de usuarios</Link>
     </main>
   );

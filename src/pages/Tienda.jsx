@@ -153,12 +153,12 @@ export default function Tienda({
       </div>
       <section
         className="tarjeta-panel carrito-panel"
-        aria-label="Carrito de demostración"
+        aria-label={apiMode ? "Carrito" : "Carrito de demostración"}
       >
         <h2>Tu carrito</h2>
         <p>
           {apiMode
-            ? "El carrito se conserva localmente hasta que el servidor confirme el pedido. Los pagos no están conectados."
+            ? "Tu carrito se guarda en esta pestaña. Al finalizar verás el pedido y el comprobante del pago simulado."
             : "Demostración local. Los pedidos y pagos son simulados."}
         </p>
         {carrito.length === 0 ? (
